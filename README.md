@@ -29,6 +29,7 @@
 
 ## 怎么打开
 
+- **在线访问（现在就能用）**：<https://htmlpreview.github.io/?https://github.com/uuytom110-sudo/LLM/blob/claude/hopeful-ptolemy-gvany5/index.html> ——由 htmlpreview.github.io 直接读取本仓库的最新代码显示，推送后几分钟内自动更新。
 - **本地运行**：直接用浏览器打开 `index.html`，或在仓库目录运行 `python3 -m http.server` 后访问 `http://localhost:8000`。
 - **离线单文件**：运行 `python3 scripts/build_single.py`，生成 `dist/gewu-offline.html`，一个文件包含全部内容，双击即可打开。
 - **GitHub Pages / 自己的域名**：推送后 `.github/workflows/pages.yml` 自动构建发布。第一次需要在仓库 **Settings → Pages → Source** 选择 **GitHub Actions**；绑定自己的域名（不需要服务器）的完整步骤见 [DEPLOY.md](DEPLOY.md)。
