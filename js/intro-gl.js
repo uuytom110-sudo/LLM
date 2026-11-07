@@ -235,14 +235,14 @@
   var PTS_FS_L = 'precision mediump float; uniform vec3 uCol; varying float vB; void main(){ vec2 d = gl_PointCoord - 0.5; gl_FragColor = vec4(uCol * vB * exp(-dot(d, d) * 12.0), 1.0); }';
   /* 全片粒子层：不同景深的漂浮微粒，近处大而快（散景），远处细而慢；随章节着色，转场时增亮 */
   var DUST_VS = [
-    'attribute vec4 aD; uniform float uT; uniform vec2 uK; uniform vec2 uC; uniform float uPs; uniform float uFade; uniform vec3 uCol; uniform float uBoost; uniform float uA;',
+    'attribute vec4 aD; uniform float uT; uniform vec2 uK; uniform vec2 uC; uniform float uPs; uniform float uFade; uniform vec3 uCol; uniform float uBoost; uniform float uA; uniform float uAy;',
     'varying vec3 vC;',
     'void main(){',
     '  float z = aD.z; float par = 0.55 + 0.9 * z; float sp = 0.025 + 0.16 * z;',
-    '  vec2 p = aD.xy * vec2(uA, 1.15);',
+    '  vec2 p = aD.xy * vec2(uA, uAy);',
     '  p.x += uT * sp * (0.55 + 0.45 * sin(aD.w * 6.2832));',
     '  p.y += sin(uT * 0.35 + aD.w * 12.0 + p.x * 1.7) * 0.09 * (0.4 + z) + uT * 0.02 * (aD.w - 0.45);',
-    '  float ax = uA / par + 0.15, ay = 1.15 / par + 0.15;',
+    '  float ax = uA / par + 0.15, ay = uAy / par + 0.15;',
     '  p.x = mod(p.x + ax, 2.0 * ax) - ax; p.y = mod(p.y + ay, 2.0 * ay) - ay;',
     '  gl_Position = vec4(p * par * uK + uC, 0.0, 1.0);',
     '  float tw = 0.5 + 0.5 * sin(uT * (0.8 + 3.0 * aD.w) + aD.w * 40.0);',
@@ -403,9 +403,7 @@
   }
 
   function start(force) {
-    var seen = false;
-    try { seen = sessionStorage.getItem('gewu-intro') === '1'; } catch (e) { /* ignore */ }
-    if ((seen && !force) || FX.reduce) return;
+    if (document.querySelector('.intro')) return;
     var el = document.createElement('div');
     el.className = 'intro intro-film';
     el.setAttribute('role', 'dialog');
@@ -434,25 +432,25 @@
       if (fallback) fallback(force);
       return;
     }
-    try { sessionStorage.setItem('gewu-intro', '1'); } catch (e) { /* ignore */ }
     document.body.appendChild(el);
     var btn = el.querySelector('.intro-go');
     var W, H, dpr, gw, gh, cols, rows, S, oy0, bar = 0, q = 0, closing = false;
     var wordRect = { x: 0, y: 0, w: 1, h: 1 };
     function layoutWord() {
-      var ww = Math.min(W * 0.78, 900), wh = ww * WCH / WCW, cx = W / 2, cy = H * 0.47;
+      var ww = Math.min(W * (W < 600 ? 0.92 : 0.78), 900), wh = ww * WCH / WCW, cx = W / 2, cy = Math.min(H, window.innerHeight || H) * 0.47;
       wordRect = { x: cx - ww / 2, y: cy - wh / 2, w: ww, h: wh };
       btn.style.left = wordRect.x + 'px'; btn.style.top = (cy - wh * 0.36) + 'px'; btn.style.width = ww + 'px'; btn.style.height = (wh * 0.72) + 'px';
     }
     function resize() {
       dpr = Math.min(window.devicePixelRatio || 1, [2.5, 1.6, 1.1][q]);
-      W = window.innerWidth; H = window.innerHeight;
+      var box = el.getBoundingClientRect();
+      W = Math.round(box.width) || window.innerWidth; H = Math.round(box.height) || window.innerHeight;
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-      var ch = (W < 600 ? 5.4 : 6.8) * [1, 1.2, 1.45][q];
+      var ch = (W < 600 ? 4.6 : 6.8) * [1, 1.2, 1.45][q];
       gh = Math.max(6, Math.round(ch * dpr)); gw = Math.max(3, Math.round(gh * 0.6));
       cols = Math.ceil(cv.width / gw); rows = Math.ceil(cv.height / gh);
-      bar = W / H > 1.3 ? Math.max(0, Math.min(H * 0.11, (H - W / 2.2) / 2)) : 0;
-      S = Math.min(W / (W < 600 ? 2.0 : 2.15), (H - bar * 2) / 1.9); oy0 = W < 600 ? -0.06 * H : 0;
+      bar = 0;
+      S = H > W * 1.3 ? Math.min(W / 1.75, H / 1.9) : Math.min(W / 2.15, H / 1.9); oy0 = 0;
       el.style.setProperty('--bar', bar + 'px');
       [[texA, fbA], [texB, fbB]].forEach(function (pr) {
         gl.bindTexture(gl.TEXTURE_2D, pr[0]); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, cols, rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -550,7 +548,7 @@
     function drawDust(c, t, tau, mul) {
       var u = PD.u, col = hexRGB(c.c);
       gl.useProgram(PD.p);
-      gl.uniform1f(u.uT, t); gl.uniform1f(u.uA, W / 2 / S);
+      gl.uniform1f(u.uT, t); gl.uniform1f(u.uA, W / 2 / S); gl.uniform1f(u.uAy, Math.max(1.15, H / 2 / S));
       gl.uniform2f(u.uK, 2 * S * dpr / (cols * gw), 2 * S * dpr / (rows * gh));
       gl.uniform2f(u.uC, (cv.width / 2 + ox * dpr * 1.6) * 2 / (cols * gw) - 1, (cv.height / 2 - oy * dpr * 1.6) * 2 / (rows * gh) - 1);
       gl.uniform1f(u.uPs, W < 600 ? 1.15 : 1.3); gl.uniform1f(u.uFade, sm(0, 1.6, tau) * dens() * mul); gl.uniform3f(u.uCol, col[0], col[1], col[2]); gl.uniform1f(u.uBoost, boost);
@@ -671,12 +669,13 @@
     }
     function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); close(); } }
     el.addEventListener('pointermove', function (e) { tmx = e.clientX / W - 0.5; tmy = e.clientY / H - 0.5; });
-    el.addEventListener('click', function () { if (ready) close(); });
+    el.addEventListener('click', function () { if (ready || FX.reduce) close(); });
     btn.addEventListener('pointerenter', function () { hovT = 1; });
     btn.addEventListener('pointerleave', function () { hovT = 0; });
     btn.addEventListener('focus', function () { hovT = 0.6; });
     btn.addEventListener('blur', function () { hovT = 0; });
     window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', function () { setTimeout(resize, 250); });
     document.addEventListener('keydown', onKey);
     raf = requestAnimationFrame(frame);
   }

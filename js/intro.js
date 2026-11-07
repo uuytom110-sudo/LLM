@@ -212,10 +212,7 @@
   /* SPEED：相对原来的倍速；DUR、TRANS 为真实秒。四个场景约 15 秒，之后字符螺旋聚成 “access” */
   var SPEED = 1.7, DUR = 6.5 / SPEED, TRANS = 0.9 / SPEED, GATHER = 2.5, MORPH = 1.1, HOLD = 1.7;
   function start(force) {
-    var seen = false;
-    try { seen = sessionStorage.getItem('gewu-intro') === '1'; } catch (e) { /* ignore */ }
-    if ((seen && !force) || reduce) return;
-    try { sessionStorage.setItem('gewu-intro', '1'); } catch (e) { /* ignore */ }
+    if (document.querySelector('.intro')) return;
     var el = document.createElement('div');
     el.className = 'intro intro-2d';
     el.setAttribute('role', 'dialog');
@@ -227,16 +224,17 @@
     var W, H, cols, rows, V, bufA, bufB, rnd, font, chh, cw, wr = { x: 0, y: 0, w: 1, h: 1 };
     function resize() {
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      W = window.innerWidth; H = window.innerHeight;
+      var box = el.getBoundingClientRect();
+      W = Math.round(box.width) || window.innerWidth; H = Math.round(box.height) || window.innerHeight;
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       chh = W < 600 ? 10 : 15; cw = Math.round(chh * 0.6 * 10) / 10;
       cols = Math.ceil(W / cw); rows = Math.ceil(H / chh);
       bufA = new Buf(cols, rows); bufB = new Buf(cols, rows);
       rnd = new Float32Array(cols * rows); for (var k = 0; k < rnd.length; k++) rnd[k] = Math.random();
       font = '500 ' + (chh * 0.92).toFixed(1) + 'px "DM Mono", ui-monospace, Menlo, Consolas, monospace';
-      var s = Math.min(W / 2.15, H / 1.95);
-      V = { s: s, cw: cw, chh: chh, cx0: W / 2, cy0: H * (W < 600 ? 0.42 : 0.5), cx: W / 2, cy: H / 2 };
-      var ww = Math.min(W * 0.78, 900), wh = ww * 300 / 1024, cy = H * 0.47;
+      var s = H > W * 1.3 ? Math.min(W / 1.75, H / 1.95) : Math.min(W / 2.15, H / 1.95);
+      V = { s: s, cw: cw, chh: chh, cx0: W / 2, cy0: H * 0.5, cx: W / 2, cy: H / 2 };
+      var ww = Math.min(W * (W < 600 ? 0.92 : 0.78), 900), wh = ww * 300 / 1024, cy = Math.min(H, window.innerHeight || H) * 0.47;
       wr = { x: W / 2 - ww / 2, y: cy - wh / 2, w: ww, h: wh };
       btn.style.left = wr.x + 'px'; btn.style.top = (cy - wh * 0.36) + 'px'; btn.style.width = ww + 'px'; btn.style.height = (wh * 0.72) + 'px';
       cells = []; if (fin) { pts = cellsOf(wIdx).map(function (c) { return { fx: c.x, fy: c.y, tx: c.x, ty: c.y, v: c.v, nv: c.v, d: 0, ch: '', col: '' }; }); wP0 = -9; morph = null; }
@@ -272,7 +270,7 @@
     /* 终章开始：此刻画面上每个亮着的字符都变成一颗粒子（保留原来的字符、颜色和位置），再螺旋聚成单词 */
     function beginFinale(tr) {
       fin = true; wP0 = tr; prev = -1; btn.classList.add('show');
-      var pal = SCENES[cur].pal, tc = cellsOf(0), b = bufB, cx = W / 2, cy = H * 0.47, md = Math.hypot(cx, cy) || 1;
+      var pal = SCENES[cur].pal, tc = cellsOf(0), b = bufB, cx = W / 2, cy = wr.y + wr.h / 2, md = Math.hypot(cx, cy) || 1;
       pts = [];
       for (var k = 0; k < b.a.length; k++) {
         if (b.a[k] < 0.03 || !b.ch[k]) continue;
@@ -290,7 +288,7 @@
       pts = out; morph = { i: ni, t0: tr };
     }
     function drawWord(p, spiral, tr) {
-      var cx = W / 2, cy = H * 0.47, RAMP2 = '.:-=+*#%@';
+      var cx = W / 2, cy = wr.y + wr.h / 2, RAMP2 = '.:-=+*#%@';
       ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       for (var i = 0; i < pts.length; i++) {
         var q = pts[i], e = Math.max(0, Math.min(1, (p - q.d * 0.4) / 0.6)); e = e * e * (3 - 2 * e);
@@ -380,7 +378,7 @@
     }
     function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); close(); } }
     el.addEventListener('pointermove', function (e) { tmx = e.clientX / W - 0.5; tmy = e.clientY / H - 0.5; });
-    el.addEventListener('click', function () { if (ready) close(); });
+    el.addEventListener('click', function () { if (ready || reduce) close(); });
     window.addEventListener('resize', resize);
     document.addEventListener('keydown', onKey);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (!closing) resize(); });
