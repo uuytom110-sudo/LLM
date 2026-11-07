@@ -383,6 +383,7 @@
       '<button type="button" class="btn primary" data-act="start" data-v="order">按顺序做 ' + pool.length + ' 题</button>' +
       '<button type="button" class="btn" data-act="start" data-v="rand">随机 10 题</button>' +
       (pool.some(function (q) { return q.tag; }) ? '<button type="button" class="btn" data-act="start" data-v="hot">期中高频 ' + pool.filter(function (q) { return q.tag; }).length + ' 题</button>' : '') +
+      (pool.some(function (q) { return q.src; }) ? '<button type="button" class="btn" data-act="start" data-v="src">真题 ' + pool.filter(function (q) { return q.src; }).length + ' 题</button>' : '') +
       '<button type="button" class="btn red" data-act="start" data-v="left"' + (notRight.length ? '' : ' disabled') + '>没做对/没做过的 ' + notRight.length + ' 题</button>' +
       '</div><p class="muted small">练习模式：每题答完立刻批改并给出解析；做错的题自动进入错题本。</p>';
     el.innerHTML = html;
@@ -447,7 +448,7 @@
       '<span class="t">' + esc(ss.title) + '</span><span class="num muted">' + (ss.i + 1) + ' / ' + ss.ids.length + '</span></div>' +
       '<div class="bar" style="--c:var(--s-' + s.id + ')"><i style="width:' + pct(ss.i + (locked ? 1 : 0), ss.ids.length) + '%"></i></div>';
     html += '<article class="qcard" style="--c:var(--s-' + s.id + ')"><div class="qmeta"><span class="chip">' + s.name + '</span>' +
-      (ch ? '<span>' + esc(ch.title) + '</span>' : '') + '<span>· ' + typeLabel(q) + '</span>' + (q.tag ? '<span class="tag">期中高频</span>' : '') + '</div>' +
+      (ch ? '<span>' + esc(ch.title) + '</span>' : '') + '<span>· ' + typeLabel(q) + '</span>' + (q.tag ? '<span class="tag">期中高频</span>' : '') + (q.src ? '<span class="tag src">真题 · ' + esc(q.src) + '</span>' : '') + '</div>' +
       '<div class="stem">' + q.q + '</div>' + fig(q.fig);
     if (q.type === 'choice') {
       html += '<div class="opts">' + q.opts.map(function (o, k) {
@@ -609,7 +610,7 @@
         '<button type="button" class="btn sm" data-act="wrongsubj" data-v="' + s.id + '">重做这些</button></div><div>' +
         mine.map(function (id) {
           var q = QMAP[id], ch = s.chMap[q.ch];
-          return '<div class="wrong-item"><div class="small muted">' + (ch ? esc(ch.title) : '') + ' · ' + typeLabel(q) + '</div><div class="st">' + q.q + '</div>' + fig(q.fig) +
+          return '<div class="wrong-item"><div class="small muted">' + (ch ? esc(ch.title) : '') + ' · ' + typeLabel(q) + (q.src ? ' · 真题（' + esc(q.src) + '）' : '') + '</div><div class="st">' + q.q + '</div>' + fig(q.fig) +
             '<details><summary class="link small" style="cursor:pointer">看答案和解析</summary><div class="small"><b style="color:var(--green)">答案：' + esc(answerText(q)) + '</b>' + (q.ex ? '<div>' + q.ex + '</div>' : '') + '</div></details>' +
             '<div><button type="button" class="link small" data-act="unwrong" data-v="' + id + '">已经弄懂了，移出错题本</button></div></div>';
         }).join('') + '</div></section>';
@@ -649,6 +650,7 @@
         if (v === 'rand') pool = shuffle(pool).slice(0, 10);
         if (v === 'left') pool = pool.filter(function (q) { var r = S.q[q.id]; return !r || !r.r; });
         if (v === 'hot') { pool = shuffle(pool.filter(function (q) { return q.tag; })); label += ' · 期中高频'; }
+        if (v === 'src') { pool = pool.filter(function (q) { return q.src; }); label += ' · 真题'; }
         startQuiz({ title: s.name + ' · ' + label, ids: pool.map(function (q) { return q.id; }), back: '#' + s.id });
         break;
       case 'cardch': ui.cardCh[s.id] = v; ui.cardIdx[s.id] = 0; ui.cardFlip = false; renderSubject(s); break;

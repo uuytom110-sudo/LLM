@@ -372,7 +372,7 @@ window.GEWU_GEO = (function () {
     }).join('');
     var hasCong = (ex.figs || [ex.fig]).some(function (f) { return f && f.cong && f.cong.length; });
     var h = '<article class="sheet stack ex" id="ex-' + ex.id + '">' +
-      '<div class="qmeta"><span class="chip">' + esc(ex.type) + '</span>' + (ex.level ? '<span class="tag' + (ex.level === '基础' ? ' calm' : '') + '">' + esc(ex.level) + '</span>' : '') + (done ? '<span class="seen">✓ 已掌握</span>' : '') + '</div>' +
+      '<div class="qmeta"><span class="chip">' + esc(ex.type) + '</span>' + (ex.level ? '<span class="tag' + (ex.level === '基础' ? ' calm' : ex.level === '真题' ? ' src' : '') + '">' + esc(ex.level) + '</span>' : '') + (done ? '<span class="seen">✓ 已掌握</span>' : '') + '</div>' +
       '<h3><span class="idx mono">例 ' + (i + 1) + '</span>' + esc(ex.title) + '</h3>' +
       (figs ? '<div class="ex-figs">' + figs + '</div>' : '') +
       '<div class="stem">' + ex.q + '</div>' + (ex.art ? '<pre class="diagram">' + esc(ex.art) + '</pre>' : '') +

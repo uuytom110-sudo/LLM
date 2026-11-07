@@ -3,7 +3,7 @@
 global.window = {};
 const path = require('path');
 const root = path.resolve(__dirname, '..');
-['js/geo.js', 'data/biology.js', 'data/physics.js', 'data/model.js'].forEach(f => require(path.join(root, f)));
+['js/geo.js', 'data/biology.js', 'data/physics.js', 'data/model.js', 'data/model-exam.js'].forEach(f => require(path.join(root, f)));
 const GEO = window.GEWU_GEO;
 let bad = 0;
 function fail(msg) { bad++; console.error('✗ ' + msg); }
@@ -22,6 +22,7 @@ window.GEWU_SUBJECTS.forEach(s => {
     else fail(w + ' 未知题型 ' + q.type);
     if (!q.ex) fail(w + ' 缺少解析');
     if (q.fig) tryFig(q.fig, w);
+    if (/如图/.test(q.q) && !q.fig) fail(w + ' 题干写了“如图”但没有图形');
   });
   s.cards.forEach((c, i) => { if (!ch.has(c.ch)) fail(s.id + ' 卡片 ' + (i + 1) + ' 章节不存在'); if (!c.f || !c.b) fail(s.id + ' 卡片缺字段'); });
   (s.examples || []).forEach(e => {
@@ -30,6 +31,6 @@ window.GEWU_SUBJECTS.forEach(s => {
   });
   const tf = s.questions.filter(q => q.type === 'choice').map(q => q.a);
   const dist = [0, 1, 2, 3].map(k => tf.filter(a => a === k).length);
-  console.log(`${s.name}：${s.chapters.length} 章，${s.chapters.reduce((n, c) => n + c.points.length, 0)} 个知识点，${s.questions.length} 题（高频 ${s.questions.filter(q => q.tag).length}），${s.cards.length} 张卡片，${(s.examples || []).length} 道例题；选择题答案分布 A/B/C/D = ${dist.join('/')}`);
+  console.log(`${s.name}：${s.chapters.length} 章，${s.chapters.reduce((n, c) => n + c.points.length, 0)} 个知识点，${s.questions.length} 题（高频 ${s.questions.filter(q => q.tag).length}，真题 ${s.questions.filter(q => q.src).length}，带图 ${s.questions.filter(q => q.fig).length}），${s.cards.length} 张卡片，${(s.examples || []).length} 道例题；选择题答案分布 A/B/C/D = ${dist.join('/')}`);
 });
 if (bad) { console.error(bad + ' 个问题'); process.exit(1); } else console.log('✓ 数据检查通过');

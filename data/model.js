@@ -93,6 +93,53 @@ window.GEWU_SUBJECTS = window.GEWU_SUBJECTS || [];
     return { pts: { A: A, B: B, C: C, D: D, E: E }, polys: ['ABC', 'ADE'], segs: ['CE:hl2'], lab: { A: 'n', D: 's' } };
   })();
 
+
+  /* 通用手拉手图：A 在上，AB = AC = 4（顶角 alpha），AD = AE（默认 2），小三角形转过 theta */
+  function figHand(alpha, theta, o) {
+    o = o || {};
+    var A = [0, 0], b0 = 270 - alpha / 2, r = o.r || 2, a2 = o.a2 === undefined ? alpha : o.a2;
+    var B = G.polar(A, 4, b0), C = G.polar(A, 4, b0 + alpha), D = G.polar(A, r, b0 + theta), E = G.polar(A, r, b0 + theta + a2);
+    var pts = { A: A, B: B, C: C, D: D, E: E };
+    var s = { pts: pts, polys: ['ABC', 'ADE'], segs: (o.segs || ['BD:hl', 'CE:hl2']).slice(), cong: o.cong === false ? [] : ['ABD:fa', 'ACE:fb'], lab: { A: 'n' } };
+    if (o.F) {
+      var F = G.inter(B, D, C, E); pts.F = F; s.dots = ['F'];
+      var t1 = G.dot(G.sub(F, B), G.sub(D, B)) / G.dot(G.sub(D, B), G.sub(D, B)), t2 = G.dot(G.sub(F, C), G.sub(E, C)) / G.dot(G.sub(E, C), G.sub(E, C));
+      if (t1 > 1) s.segs.push('DF:dash'); if (t1 < 0) s.segs.push('BF:dash'); if (t2 > 1) s.segs.push('EF:dash'); if (t2 < 0) s.segs.push('CF:dash');
+    }
+    if (o.ang) s.ang = o.ang;
+    if (o.lab) for (var key in o.lab) s.lab[key] = o.lab[key];
+    return s;
+  }
+  var fqBase = figHand(60, 25);
+  var fqPlain = figHand(50, 25, { cong: false });
+  var fqInside = figHand(70, 25, { segs: [], cong: false, ang: ['BAC:|18', 'DAE:|26'] });
+  var fqWrong = figHand(60, 25, { segs: ['BE:hl', 'CD:hl2'], cong: false });
+  var fqUnequal = figHand(60, 25, { a2: 95, cong: false });
+  var fqRt = figHand(90, 35, { F: true, right: true });
+  fqRt.right = ['BAC', 'DAE'];
+  var fq40 = figHand(40, 60, { F: true, ang: ['BAC:40°|22'] });
+  var fq130 = figHand(130, 70, { F: true, r: 1.7, ang: ['BAC:130°|16'] });
+  var fqFoot = (function () {
+    var f = figHand(60, 40, { F: true, cong: false }), p = f.pts;
+    p.G = G.foot(p.A, p.B, p.D); p.H = G.foot(p.A, p.C, p.E);
+    f.segs.push('AG:dash', 'AH:dash'); f.right = ['AGB', 'AHC']; f.lab.G = 'w'; f.lab.H = 'e';
+    return f;
+  })();
+  var fqRtLine = (function () {
+    var A = [0, 0], B = G.polar(A, 4, 225), C = G.polar(A, 4, 315), r = 1.9;
+    var ph = G.solve(function (x) { var D = G.polar(A, r, x), E = G.polar(A, r, x + 90); return G.cross(G.sub(D, B), G.sub(E, B)); }, 236, 330);
+    var D = G.polar(A, r, ph), E = G.polar(A, r, ph + 90);
+    return { pts: { A: A, B: B, C: C, D: D, E: E }, polys: ['ABC', 'ADE'], segs: ['BE:hl', 'CE:hl2'], cong: ['ABD:fa', 'ACE:fb'], right: ['BAC', 'DAE'], ang: ['BEC:?|14'], lab: { A: 'n', E: 'e', D: 'n' } };
+  })();
+  var fqLine = { pts: { R: [-1.6, 0], B: [0, 0], P: [2.2, 0], C: [4, 0], Q: [5.6, 0] }, segs: ['RB:dash', 'BC', 'CQ:dash'], dots: ['R', 'B', 'P', 'C', 'Q'], lab: { R: 's', B: 's', P: 's', C: 's', Q: 's' } };
+  var fqCross = (function () {
+    var F = [0, 0], B = G.polar(F, 3, 205), D = G.polar(F, 3, 25), C = G.polar(F, 3, 335), E = G.polar(F, 3, 155);
+    return { pts: { B: B, D: D, C: C, E: E, F: F }, segs: ['BD:hl', 'CE:hl2'], dots: ['F'], ang: ['BFC:α|22', 'CFD:180°−α|18'], lab: { F: 'n' } };
+  })();
+  var f9s = { pts: f9.pts, polys: f9.polys, segs: ['AE:hl', 'AF:hl', 'EF:hl2'], ang: f9.ang, hide: ['G'], lab: f9.lab };
+  var f4s = { pts: f4.pts, polys: f4.polys, segs: ['CD:hl', 'BE:hl2'], hide: ['O', 'M'], lab: { A: 'n' } };
+  var f1c = { pts: f1.pts, polys: f1.polys, segs: ['AE:hl', 'BD:hl2', 'CF:dash'], dots: ['F'], hide: ['M', 'N'], lab: { F: 'n', C: 's' } };
+
   window.GEWU_SUBJECTS.push({
     id: 'model', name: '手拉手模型', short: '旋', book: '数学 · 八年级上册 · 全等三角形专题',
     tabs: ['learn', 'lab', 'examples', 'practice', 'cards'],
@@ -326,26 +373,26 @@ window.GEWU_SUBJECTS = window.GEWU_SUBJECTS || [];
     ],
 
     questions: [
-      { ch: 'm1', type: 'choice', q: '在手拉手模型中，证明两个三角形全等最常用的判定方法是：', opts: ['SSS', 'SAS', 'ASA', 'HL'], a: 1, ex: '两组“手”是两组边，夹角由“等角加减同一个角”得到，正好是 SAS。', tag: '高频' },
-      { ch: 'm1', type: 'choice', q: '已知 AB = AC，AD = AE，∠BAC = ∠DAE，且从 AB 到 AC 与从 AD 到 AE 的旋转方向相同。下列三角形中一定与 △ABD 全等的是：', opts: ['△ADE', '△ACE', '△ABC', '△ACD'], a: 1, ex: 'B 与 C 对应、D 与 E 对应，所以 △ABD ≌ △ACE。' },
-      { ch: 'm1', type: 'choice', q: '∠BAC = ∠DAE，射线 AD 在 ∠BAC 的内部，射线 AC 在 ∠DAE 的内部，得到 ∠BAD = ∠CAE 的依据是：', opts: ['两边同时减去 ∠DAC', '两边同时加上 ∠DAC', '对顶角相等', '同角的余角相等'], a: 0, ex: '∠DAC 是两个顶角的公共部分：∠BAD = ∠BAC − ∠DAC，∠CAE = ∠DAE − ∠DAC。' },
-      { ch: 'm1', type: 'choice', q: '已知 AB = AC，∠BAD = ∠CAE，要用 SAS 证明 △ABD ≌ △ACE，还需要添加的条件是：', opts: ['BD = CE', 'AD = AE', '∠B = ∠C', '∠D = ∠E'], a: 1, ex: 'SAS 要求“两边及其夹角”，∠BAD 的两边是 AB、AD，∠CAE 的两边是 AC、AE，所以补 AD = AE。补 ∠B = ∠C 或 ∠D = ∠E 是用 ASA / AAS，不符合题目指定的 SAS；补 BD = CE 是 SSA，不能判定。', tag: '高频' },
-      { ch: 'm1', type: 'tf', q: '只要两个等腰三角形有公共顶点，连接对应端点就一定能得到全等三角形。', a: false, ex: '还需要两个顶角相等（∠BAC = ∠DAE），并且按相同的旋转方向对应连线。' },
-      { ch: 'm1', type: 'tf', q: '在手拉手模型中，若连接的是 BE、CD（而不是 BD、CE），一般不能得到 BE = CD。', a: true, ex: '对应点连错了，三角形不全等，BE 与 CD 一般不相等。' },
+      { ch: 'm1', type: 'choice', q: '在手拉手模型中，证明两个三角形全等最常用的判定方法是：', fig: fqBase, opts: ['SSS', 'SAS', 'ASA', 'HL'], a: 1, ex: '两组“手”是两组边，夹角由“等角加减同一个角”得到，正好是 SAS。', tag: '高频' },
+      { ch: 'm1', type: 'choice', q: '已知 AB = AC，AD = AE，∠BAC = ∠DAE，且从 AB 到 AC 与从 AD 到 AE 的旋转方向相同。下列三角形中一定与 △ABD 全等的是：', fig: fqPlain, opts: ['△ADE', '△ACE', '△ABC', '△ACD'], a: 1, ex: 'B 与 C 对应、D 与 E 对应，所以 △ABD ≌ △ACE。' },
+      { ch: 'm1', type: 'choice', q: '∠BAC = ∠DAE，射线 AD 在 ∠BAC 的内部，射线 AC 在 ∠DAE 的内部，得到 ∠BAD = ∠CAE 的依据是：', fig: fqInside, opts: ['两边同时减去 ∠DAC', '两边同时加上 ∠DAC', '对顶角相等', '同角的余角相等'], a: 0, ex: '∠DAC 是两个顶角的公共部分：∠BAD = ∠BAC − ∠DAC，∠CAE = ∠DAE − ∠DAC。' },
+      { ch: 'm1', type: 'choice', q: '已知 AB = AC，∠BAD = ∠CAE，要用 SAS 证明 △ABD ≌ △ACE，还需要添加的条件是：', fig: fqBase, opts: ['BD = CE', 'AD = AE', '∠B = ∠C', '∠D = ∠E'], a: 1, ex: 'SAS 要求“两边及其夹角”，∠BAD 的两边是 AB、AD，∠CAE 的两边是 AC、AE，所以补 AD = AE。补 ∠B = ∠C 或 ∠D = ∠E 是用 ASA / AAS，不符合题目指定的 SAS；补 BD = CE 是 SSA，不能判定。', tag: '高频' },
+      { ch: 'm1', type: 'tf', q: '只要两个等腰三角形有公共顶点，连接对应端点就一定能得到全等三角形。', fig: fqUnequal, a: false, ex: '还需要两个顶角相等（∠BAC = ∠DAE），并且按相同的旋转方向对应连线。' },
+      { ch: 'm1', type: 'tf', q: '在手拉手模型中，若连接的是 BE、CD（而不是 BD、CE），一般不能得到 BE = CD。', fig: fqWrong, a: true, ex: '对应点连错了，三角形不全等，BE 与 CD 一般不相等。' },
       { ch: 'm2', type: 'fill', q: '如图，B、C、E 在同一直线上，△ABC 和 △DCE 都是等边三角形，AE 与 BD 交于点 F，则 ∠AFB = ______°。', fig: f1s, a: ['60', '60°'], ex: '∠AFB = ∠FBE + ∠FEB = ∠CAE + ∠AEC = ∠ACB = 60°。', tag: '高频' },
       { ch: 'm2', type: 'fill', q: '同上图，∠BFE = ______°。', fig: f1s, a: ['120', '120°'], ex: '∠BFE 与 ∠AFB 互补：180° − 60° = 120°。' },
       { ch: 'm2', type: 'fill', q: '同上图，连接 CF，则 ∠BFC = ______°。', fig: f1s, a: ['60', '60°'], ex: 'CF 平分 ∠BFE（C 到 BD、AE 的距离相等），∠BFC = ½ × 120° = 60°。' },
       { ch: 'm2', type: 'fill', q: '同上图，若 AF = 3，CF = 2，则 BF = ______。', fig: f1s, a: ['5'], ex: '结论 BF = AF + CF（在 BF 上截取 FG = FC，证 △BCG ≌ △ACF）。BF = 3 + 2 = 5。' },
       { ch: 'm2', type: 'choice', q: '如图（同上），下列结论：① AE = BD；② ∠AFB = 60°；③ CF 平分 ∠BFE；④ AC ⊥ BD。正确的有：', fig: f1s, opts: ['1 个', '2 个', '3 个', '4 个'], a: 2, ex: '①②③ 正确；AC 与 BD 一般不垂直，④ 错误。“结论个数”题要逐条验证。', tag: '高频' },
-      { ch: 'm2', type: 'fill', q: '△ABC 和 △ADE 都是等腰直角三角形，∠BAC = ∠DAE = 90°，连接 BD、CE，则 BD 与 CE 所在直线的夹角为 ______°。', a: ['90', '90°'], ex: '拉手线的夹角等于顶角 90°，即 BD ⊥ CE。', tag: '高频' },
-      { ch: 'm2', type: 'fill', q: 'AB = AC，AD = AE，∠BAC = ∠DAE = 40°，连接 BD、CE，则 BD 与 CE 所夹的锐角为 ______°。', a: ['40', '40°'], ex: '夹角等于顶角 α = 40°。' },
-      { ch: 'm2', type: 'fill', q: 'AB = AC，AD = AE，∠BAC = ∠DAE = 130°，连接 BD、CE，则 BD 与 CE 所夹的锐角为 ______°。', a: ['50', '50°'], ex: '两直线的夹角一个是 130°，另一个是 180° − 130° = 50°，锐角为 50°。' },
+      { ch: 'm2', type: 'fill', q: '△ABC 和 △ADE 都是等腰直角三角形，∠BAC = ∠DAE = 90°，连接 BD、CE，则 BD 与 CE 所在直线的夹角为 ______°。', fig: fqRt, a: ['90', '90°'], ex: '拉手线的夹角等于顶角 90°，即 BD ⊥ CE。', tag: '高频' },
+      { ch: 'm2', type: 'fill', q: 'AB = AC，AD = AE，∠BAC = ∠DAE = 40°，连接 BD、CE，则 BD 与 CE 所夹的锐角为 ______°。', fig: fq40, a: ['40', '40°'], ex: '夹角等于顶角 α = 40°。' },
+      { ch: 'm2', type: 'fill', q: 'AB = AC，AD = AE，∠BAC = ∠DAE = 130°，连接 BD、CE，则 BD 与 CE 所夹的锐角为 ______°。', fig: fq130, a: ['50', '50°'], ex: '两直线的夹角一个是 130°，另一个是 180° − 130° = 50°，锐角为 50°。' },
       { ch: 'm2', type: 'tf', q: '在手拉手模型中，两条拉手线所夹的锐角总是 60°。', a: false, ex: '只有顶角为 60°（等边三角形）时才是 60°；一般等于顶角 α 或 180° − α。' },
-      { ch: 'm2', type: 'choice', q: '证明“FA 平分 ∠BFE”（A 为公共顶点，F 为两条拉手线的交点）时，最后一步的依据是：', opts: ['角平分线的性质', '角的内部到角两边距离相等的点在角的平分线上', '等腰三角形三线合一', 'SAS'], a: 1, ex: '先证 A 到两条拉手线的距离相等，再用角平分线的<b>判定</b>。注意不要写成“性质”。' },
-      { ch: 'm2', type: 'choice', q: '在上一题中，证明 A 到 BD、CE 距离相等的理由是：', opts: ['全等三角形对应边上的高相等', '等腰三角形底边上的高相等', '平行线间的距离相等', '角平分线上的点到角两边距离相等'], a: 0, ex: '△ABD ≌ △ACE，BD 与 CE 是对应边，对应边上的高相等（或用面积法）。' },
+      { ch: 'm2', type: 'choice', q: '证明“FA 平分 ∠BFE”（A 为公共顶点，F 为两条拉手线的交点）时，最后一步的依据是：', fig: f1c, opts: ['角平分线的性质', '角的内部到角两边距离相等的点在角的平分线上', '等腰三角形三线合一', 'SAS'], a: 1, ex: '先证 A 到两条拉手线的距离相等，再用角平分线的<b>判定</b>。注意不要写成“性质”。' },
+      { ch: 'm2', type: 'choice', q: '如图，AG ⊥ BD 于 G，AH ⊥ CE 于 H。证明 AG = AH（即 A 到 BD、CE 距离相等）的理由是：', fig: fqFoot, opts: ['全等三角形对应边上的高相等', '等腰三角形底边上的高相等', '平行线间的距离相等', '角平分线上的点到角两边距离相等'], a: 0, ex: '△ABD ≌ △ACE，BD 与 CE 是对应边，对应边上的高相等（或用面积法）。' },
       { ch: 'm3', type: 'choice', q: '以 △ABC 的边 AB、AC 为边向外作正方形 ABDE 和 ACFG，连接 BG、CE，则 BG 与 CE：', fig: { pts: f3.pts, polys: f3.polys, segs: f3.segs, hide: ['O', 'N'] }, opts: ['相等且垂直', '相等但不一定垂直', '垂直但不一定相等', '既不一定相等也不一定垂直'], a: 0, ex: '△AEC ≌ △ABG（SAS），CE = BG；顶角 90°，所以 BG ⊥ CE。', tag: '高频' },
       { ch: 'm3', type: 'fill', q: '以 △ABC 的边 AB、AC 为边向外作等边三角形 ABD、ACE，CD 与 BE 交于点 O，则 ∠BOC = ______°。', fig: { pts: f4.pts, polys: f4.polys, segs: ['CD:hl', 'BE:hl2'], dots: ['O'], hide: ['M'], lab: { O: 's', A: 'n' } }, a: ['120', '120°'], ex: '拉手线所夹锐角 ∠BOD = 60°，∠BOC 是它的邻补角，等于 120°。', tag: '高频' },
-      { ch: 'm3', type: 'tf', q: '以 △ABC 的两边 AB、AC 为边向外作等边三角形 ABD、ACE，则一定有 CD = BE。', a: true, ex: '△ADC ≌ △ABE（SAS）。' },
+      { ch: 'm3', type: 'tf', q: '以 △ABC 的两边 AB、AC 为边向外作等边三角形 ABD、ACE，则一定有 CD = BE。', fig: f4s, a: true, ex: '△ADC ≌ △ABE（SAS）。' },
       { ch: 'm3', type: 'choice', q: '如图，△ABC 和 △ADE 都是等腰直角三角形，∠BAC = ∠DAE = 90°，CE 的延长线交 BD 于 F，连接 AF，则 ∠AFC 等于：', fig: { pts: f2.pts, polys: f2.polys, segs: f2.segs, dots: ['F'], hide: ['G'], right: f2.right, lab: f2.lab }, opts: ['30°', '45°', '60°', '90°'], a: 1, ex: 'BD ⊥ CE，FA 平分 ∠DFC（直角），∠AFC = 45°。' },
       { ch: 'm3', type: 'choice', q: '下列情况中，不能直接构成手拉手模型的是：', opts: ['两个共顶点的等边三角形', '两个共直角顶点的等腰直角三角形', '两个共顶点但顶角不相等的等腰三角形', '两个共顶点的正方形'], a: 2, ex: '顶角不相等，就得不到 ∠BAD = ∠CAE。' },
       { ch: 'm4', type: 'fill', q: '在 △ABC 中，∠BAC = 90°，AB = AC，D 在 BC 上，以 AD 为腰作等腰直角 △ADE（∠DAE = 90°，E 在 AD 右侧），连接 CE。若 BC = 7，BD = 2，则 CE = ______。', fig: f6a, a: ['2'], ex: '△ABD ≌ △ACE，CE = BD = 2（BC 的长是干扰条件）。' },
@@ -355,13 +402,13 @@ window.GEWU_SUBJECTS = window.GEWU_SUBJECTS || [];
       { ch: 'm4', type: 'fill', q: '同上图，∠ACE = ______°。', fig: fq1, a: ['60', '60°'], ex: '∠ACE = ∠ABD = 60°，所以 CE ∥ AB。' },
       { ch: 'm4', type: 'fill', q: '等边 △ABC 与等边 △ADE 共顶点 A，旋转 △ADE 使 B、D、E 三点共线，则 ∠BEC = ______°。', fig: f7b, a: ['60', '60°'], ex: '∠ADB = 120° = ∠AEC，∠BEC = 120° − 60° = 60°。', tag: '高频' },
       { ch: 'm4', type: 'fill', q: '同上题，若 AE = 2，CE = 3，则 BE = ______。', fig: f7b, a: ['5'], ex: 'BE = BD + DE = CE + AE = 5。' },
-      { ch: 'm4', type: 'fill', q: '等腰直角 △ABC 与 △ADE 共直角顶点 A（∠BAC = ∠DAE = 90°），当 B、D、E 三点共线时，∠BEC = ______°。', a: ['90', '90°'], ex: '∠ADB = 180° − 45° = 135° = ∠AEC，∠BEC = 135° − 45° = 90°。' },
+      { ch: 'm4', type: 'fill', q: '等腰直角 △ABC 与 △ADE 共直角顶点 A（∠BAC = ∠DAE = 90°），当 B、D、E 三点共线时，∠BEC = ______°。', fig: fqRtLine, a: ['90', '90°'], ex: '∠ADB = 180° − 45° = 135° = ∠AEC，∠BEC = 135° − 45° = 90°。' },
       { ch: 'm4', type: 'fill', q: '△ABC 是等边三角形，点 P 在 BC 下方，∠BPC = 120°，PB = 2，PC = 3，则 PA = ______。', fig: { pts: f8.pts, polys: f8.polys, segs: ['PB', 'PC', 'AP:hl'], hide: ['E'], lab: f8.lab }, a: ['5'], ex: '构造手拉手可证 PA = PB + PC = 5。' },
-      { ch: 'm4', type: 'fill', q: '正方形 ABCD 中，E 在 BC 上，F 在 CD 上，∠EAF = 45°。若 BE = 2，DF = 3，则 EF = ______。', a: ['5'], ex: '半角模型：EF = BE + DF = 5。' },
-      { ch: 'm4', type: 'fill', q: '正方形 ABCD 的边长为 6，E 在 BC 上，F 在 CD 上，∠EAF = 45°，则 △CEF 的周长为 ______。', a: ['12'], ex: 'EF = BE + DF，周长 = CE + CF + BE + DF = BC + CD = 12。' },
-      { ch: 'm4', type: 'tf', q: '点 D 在直线 BC 上运动时（例 6 的条件），无论 D 在哪里，BD = CE 都成立。', a: true, ex: '△ABD ≌ △ACE 在三种位置都成立，变化的只是 BC、CD、CE 的和差关系。' },
-      { ch: 'm5', type: 'choice', q: '“点 D 在直线 BC 上”的动点题，一般需要讨论几种位置？', opts: ['1 种', '2 种', '3 种', '4 种'], a: 2, ex: '线段 BC 上、CB 延长线上、BC 延长线上，共 3 种。' },
-      { ch: 'm5', type: 'choice', q: '两条直线相交，其中一个角等于 α（α < 90°），则这两条直线所成的四个角中：', opts: ['都等于 α', '两个等于 α，两个等于 180° − α', '两个等于 α，两个等于 90° − α', '一个等于 α，三个等于 180° − α'], a: 1, ex: '对顶角相等、邻补角互补。求 ∠BFC 时要看清是 α 还是 180° − α。' }
+      { ch: 'm4', type: 'fill', q: '正方形 ABCD 中，E 在 BC 上，F 在 CD 上，∠EAF = 45°。若 BE = 2，DF = 3，则 EF = ______。', fig: f9s, a: ['5'], ex: '半角模型：EF = BE + DF = 5。' },
+      { ch: 'm4', type: 'fill', q: '正方形 ABCD 的边长为 6，E 在 BC 上，F 在 CD 上，∠EAF = 45°，则 △CEF 的周长为 ______。', fig: f9s, a: ['12'], ex: 'EF = BE + DF，周长 = CE + CF + BE + DF = BC + CD = 12。' },
+      { ch: 'm4', type: 'tf', q: '点 D 在直线 BC 上运动时（例 6 的条件），无论 D 在哪里，BD = CE 都成立。', fig: f6a, a: true, ex: '△ABD ≌ △ACE 在三种位置都成立，变化的只是 BC、CD、CE 的和差关系。' },
+      { ch: 'm5', type: 'choice', q: '“点 D 在直线 BC 上”的动点题（如图，P、Q、R 是 D 可能所在的三类位置），一般需要讨论几种位置？', fig: fqLine, opts: ['1 种', '2 种', '3 种', '4 种'], a: 2, ex: '线段 BC 上、CB 延长线上、BC 延长线上，共 3 种。' },
+      { ch: 'm5', type: 'choice', q: '两条直线相交，其中一个角等于 α（α < 90°），则这两条直线所成的四个角中：', fig: fqCross, opts: ['都等于 α', '两个等于 α，两个等于 180° − α', '两个等于 α，两个等于 90° − α', '一个等于 α，三个等于 180° − α'], a: 1, ex: '对顶角相等、邻补角互补。求 ∠BFC 时要看清是 α 还是 180° − α。' }
     ],
 
     cards: [
