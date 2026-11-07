@@ -40,42 +40,8 @@
     s.cards.forEach(function (c, i) { c.id = s.id + '-c' + i; c.subj = s.id; CMAP[c.id] = c; });
   });
 
-  /* ---------- 学习计划 ---------- */
-  var PLAN = [
-    { date: '2026-11-07', label: '周六', title: '11月7日', tasks: [
-      { id: 'p1', when: '上午', text: '物理：第一章 机械运动（单位换算、参照物、速度公式）+ 练习', link: '#physics' },
-      { id: 'p2', when: '上午', text: '手拉手模型：读「模型讲解」，在「动手旋转」里把四种形态都转一遍', link: '#model' },
-      { id: 'p3', when: '下午', text: '生物学：第六章 感知（眼、耳）+ 神经调节（反射弧、受损推理）', link: '#biology' },
-      { id: 'p4', when: '下午', text: '物理：计算题研究 例 1—4（过桥、回声、平均速度、图像）', link: '#physics' },
-      { id: 'p5', when: '晚上', text: '把今天的错题在「错题本」里重做一遍', link: '#wrong' }
-    ] },
-    { date: '2026-11-08', label: '周日', title: '11月8日', tasks: [
-      { id: 'p6', when: '上午', text: '物理：第二章 声现象 + 第三章 物态变化（六种变化及吸放热），随机 20 题', link: '#physics' },
-      { id: 'p7', when: '上午', text: '手拉手模型：题型研究 例 1—5，先遮住解答自己做', link: '#model' },
-      { id: 'p8', when: '下午', text: '生物学：激素调节（激素异常对应病）+ 运动系统', link: '#biology' },
-      { id: 'p9', when: '下午', text: '物理：第四章 光现象（反射定律、平面镜成像、折射）', link: '#physics' },
-      { id: 'p10', when: '晚上', text: '手拉手模型：练习全部做一遍，错题弄懂', link: '#model' }
-    ] },
-    { date: '2026-11-09', label: '周一', title: '11月9日', tasks: [
-      { id: 'p11', when: '放学后', text: '生物学：传染病与免疫（三个环节、三项措施、三道防线）', link: '#biology' },
-      { id: 'p12', when: '放学后', text: '手拉手模型：题型研究 例 6—9（动点、旋转探究、构造、半角）', link: '#model' },
-      { id: 'p13', when: '晚上', text: '物理：第五、六章（透镜成像规律、密度）+ 计算题 例 5—8', link: '#physics' },
-      { id: 'p14', when: '晚上', text: '综合模拟 30 题，订正错题', link: '#mock' }
-    ] },
-    { date: '2026-11-10', label: '周二', title: '11月10日', tasks: [
-      { id: 'p15', when: '放学后', text: '错题本全部重做，直到清空', link: '#wrong' },
-      { id: 'p16', when: '放学后', text: '只刷「还不熟」的卡片：物理公式与单位、生物概念、手拉手结论', link: '#physics' },
-      { id: 'p17', when: '晚上', text: '手拉手模型：结论卡过一遍，默写证明模板（不做新难题）', link: '#model' },
-      { id: 'p18', when: '晚上', text: '准备文具：黑色签字笔、2B 铅笔、橡皮、尺规；22:00 前睡觉', link: '' }
-    ] },
-    { date: '2026-11-11', label: '周三', title: '考试日', tasks: [
-      { id: 'p19', when: '早上', text: '吃早餐，提前 20 分钟到考场；考前翻 5 分钟卡片', link: '' },
-      { id: 'p20', when: '答题', text: '先易后难；物理计算写公式、带单位；几何证明写清“在 △___ 和 △___ 中”', link: '' }
-    ] }
-  ];
-
   /* ---------- 存储 ---------- */
-  function blank() { return { q: {}, wrong: {}, cards: {}, seen: {}, plan: {}, mocks: [], theme: 'auto' }; }
+  function blank() { return { q: {}, wrong: {}, cards: {}, seen: {}, mocks: [], theme: 'auto' }; }
   function load() {
     try {
       var raw = JSON.parse(localStorage.getItem(KEY));
@@ -106,7 +72,6 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.hidden = true; }, 2200);
   }
-  function ymd(d) { var m = d.getMonth() + 1, dd = d.getDate(); return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd; }
 
   var FULL = { '，': '', '。': '', '、': '', '；': '', '：': '', '？': '', '！': '', '“': '', '”': '', '‘': '', '’': '', '《': '', '》': '', '（': '(', '）': ')', '＝': '=', '×': '*', '·': '*', '÷': '/', '－': '-', '＋': '+', '—': '-', '／': '/' };
   function norm(s) {
@@ -175,7 +140,7 @@
   });
 
   /* ---------- 状态 ---------- */
-  var ui = { tab: {}, ch: {}, cardIdx: {}, cardFlip: false, cardOnlyNew: {}, cardCh: {}, planDay: null, mockSubj: null, mockN: 30, mockHot: false, search: '' };
+  var ui = { tab: {}, ch: {}, cardIdx: {}, cardFlip: false, cardOnlyNew: {}, cardCh: {}, mockSubj: null, mockN: 30, mockHot: false, search: '' };
   var session = null;
 
   /* ---------- 路由 ---------- */
@@ -218,14 +183,6 @@
   }
 
   function renderHome() {
-    var today = ymd(new Date());
-    if (!ui.planDay) {
-      var hit = PLAN.filter(function (p) { return p.date === today; })[0];
-      ui.planDay = hit ? hit.date : (today < PLAN[0].date ? PLAN[0].date : PLAN[PLAN.length - 1].date);
-    }
-    var day = PLAN.filter(function (p) { return p.date === ui.planDay; })[0] || PLAN[0];
-    var allTasks = 0, doneTasks = 0;
-    PLAN.forEach(function (p) { p.tasks.forEach(function (t) { allTasks++; if (S.plan[t.id]) doneTasks++; }); });
     var wn = wrongIds().length;
 
     var html = '';
@@ -236,21 +193,7 @@
       '<div class="hero-cta"><a class="btn primary" href="#mock">开始综合模拟</a><a class="btn ghost" href="#wrong">错题本 · ' + wn + '</a></div></div>' +
       '<div class="hero-side"><div id="countdown">' + countdownHTML() + '</div></div></section>';
 
-    html += '<section class="sheet stack"><div class="sec-head"><h2><span class="idx">01</span>复习计划</h2><span class="muted small mono">完成 ' + doneTasks + ' / ' + allTasks + '</span></div>' +
-      '<div class="days" role="tablist">' + PLAN.map(function (p) {
-        var cls = (p.date === ui.planDay ? 'on ' : '') + (p.date === today ? 'today' : '');
-        var dn = p.tasks.filter(function (t) { return S.plan[t.id]; }).length;
-        return '<button type="button" role="tab" class="' + cls + '" data-act="day" data-v="' + p.date + '">' + p.title +
-          '<small>' + (p.date === today ? '今天 · ' : '') + p.label + ' · ' + dn + '/' + p.tasks.length + '</small></button>';
-      }).join('') + '</div>' +
-      '<ul class="tasks">' + day.tasks.map(function (t) {
-        var on = !!S.plan[t.id];
-        return '<li class="' + (on ? 'done' : '') + '"><input type="checkbox" id="task-' + t.id + '" data-act="task" data-v="' + t.id + '"' + (on ? ' checked' : '') + '>' +
-          '<label for="task-' + t.id + '"><span class="when">' + t.when + '</span>' + esc(t.text) + '</label>' +
-          (t.link ? '<a class="btn sm" href="' + t.link + '">去复习</a>' : '<span></span>') + '</li>';
-      }).join('') + '</ul></section>';
-
-    html += '<section class="stack"><div class="sec-head"><h2><span class="idx">02</span>三个专题</h2><span class="muted small">点进去看知识点、例题、做题、背卡片</span></div><div class="subjects">' +
+    html += '<section class="stack"><div class="sec-head"><h2><span class="idx">01</span>三个专题</h2><span class="muted small">点进去看知识点、例题、做题、背卡片</span></div><div class="subjects">' +
       SUBJECTS.map(function (s) {
         var st = subjStats(s);
         var exN = (s.examples || []).length, exD = (s.examples || []).filter(function (e) { return S.seen['ex/' + e.id]; }).length;
@@ -266,7 +209,7 @@
       '<a class="sheet" href="#wrong"><strong>错题本 · ' + wn + ' 题</strong><span>' + (wn ? '重做做对就会移出' : '目前没有错题') + '</span></a>' +
       '</section>';
 
-    html += '<section class="stack search"><h2><span class="idx">03</span>查知识点</h2>' +
+    html += '<section class="stack search"><h2><span class="idx">02</span>查知识点</h2>' +
       '<input id="search-input" type="search" placeholder="输入关键词，如：反射弧、凝华、平面镜、手拉手、8 字型" autocomplete="off" value="' + esc(ui.search) + '">' +
       '<div id="search-results" class="results"></div></section>';
 
@@ -626,9 +569,7 @@
     var h = (location.hash || '#home').slice(1);
     var s = SMAP[h];
     switch (act) {
-      case 'day': ui.planDay = v; renderHome(); break;
       case 'replay': FX.intro(true); break;
-      case 'task': break; // 由 change 处理
       case 'jump':
         var ch = el.getAttribute('data-ch'), sid = el.getAttribute('data-s');
         ui.tab[sid] = el.getAttribute('data-tab') || 'learn'; if (ch) ui.ch[sid + ':open'] = ch;
@@ -727,12 +668,6 @@
 
   app.addEventListener('change', function (e) {
     var el = e.target;
-    if (el.getAttribute('data-act') === 'task') {
-      var id = el.getAttribute('data-v');
-      if (el.checked) S.plan[id] = 1; else delete S.plan[id];
-      save(); renderHome();
-      if (el.checked) toast('完成一项，继续！');
-    }
     if (el.getAttribute('data-act') === 'onlynew') {
       var s = SMAP[(location.hash || '').slice(1)];
       ui.cardOnlyNew[s.id] = el.checked; ui.cardIdx[s.id] = 0; ui.cardFlip = false; renderSubject(s);

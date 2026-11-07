@@ -1,7 +1,8 @@
 /* 开场影片《从原子到视界》：Fuxi 复习站原版的 WebGL 字符画影片，整体加速约 2.8 倍（全片约 19 秒）。
    每一章都是一个自然现象的方程实时绘制：氢原子轨道、克拉德尼图形、湍流、洛伦兹吸引子、朱利亚集、叶序（黄金角）、密度波星系、黑洞视界。
    第一遍在字符网格分辨率上渲染明暗（洛伦兹、叶序与星系另用粒子叠加），第二遍把亮度映射到按墨量排序的字符阶梯，并加入胶片颗粒、暗角、宽银幕遮幅。
-   终章：画面里所有漂浮粒子和吸积盘上的粒子螺旋聚拢，凝成精细的字符画单词 “access”（就是进入按钮），随后在十余种语言之间轮换，背景粒子继续流动。
+   终章：读回最后一帧画面，画面上每一个亮着的字符都变成一颗粒子（同色、同位置，交接时看不出断点），全部螺旋聚拢，
+   凝成精细的字符画单词 “access”（就是进入按钮），随后在十余种语言之间轮换，背景微粒继续流动。
    不支持 WebGL 时退回 js/intro.js 的 2D 版本。 */
 (function () {
   'use strict';
@@ -26,7 +27,7 @@
 
   var SCENE_FS = [
     '#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif',
-    'uniform vec2 uRes; uniform vec2 uCell; uniform float uS; uniform vec2 uOff; uniform float uT; uniform float uTau; uniform float uId; uniform vec2 uM; uniform float uDim; uniform vec3 uHole; uniform vec2 uHoleR;',
+    'uniform vec2 uRes; uniform vec2 uCell; uniform float uS; uniform vec2 uOff; uniform float uT; uniform float uTau; uniform float uId; uniform vec2 uM;',
     'vec2 gCell;',
     'float hash1(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }',
     'float noise(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);',
@@ -192,8 +193,7 @@
     '  vec2 px = (gCell + 0.5) * uCell;',
     '  vec2 p = vec2(px.x - uRes.x * 0.5 - uOff.x, px.y - uRes.y * 0.5 + uOff.y) / uS;',
     '  p *= 1.0 - 0.075 * smoothstep(0.0, 7.0, uTau);',
-    '  vec3 c = scene(uId, p, uT, uTau) * smoothstep(0.0, 1.4, uTau) * uDim;',
-    '  vec2 hd = (px - uHole.xy) / uHoleR; c *= 1.0 - uHole.z * exp(-dot(hd, hd) * 1.3);',
+    '  vec3 c = scene(uId, p, uT, uTau) * smoothstep(0.0, 1.4, uTau);',
     '  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);',
     '}'
   ].join('\n');
@@ -297,7 +297,7 @@
     return { canvas: c, ink: ink };
   }
   var WORD_VS = [
-    'attribute vec2 aF; attribute vec2 aT; attribute vec2 aS;',
+    'attribute vec2 aF; attribute vec2 aT; attribute vec2 aS; attribute vec4 aC;',
     'uniform float uP; uniform float uT; uniform vec2 uK; uniform vec2 uC; uniform vec2 uWC; uniform float uTurns; uniform float uBurst; uniform float uMode; uniform float uPs; uniform float uB; uniform float uHov;',
     'varying vec3 vC;',
     'void main(){',
@@ -311,9 +311,11 @@
     '  float settled = smoothstep(0.92, 1.0, e);',
     '  p += settled * 0.0035 * vec2(sin(uT * 2.3 + aS.y * 40.0), cos(uT * 1.9 + aS.y * 31.0));',
     '  gl_Position = vec4(p * uK + uC, 0.0, 1.0);',
-    '  float tw = 0.7 + 0.3 * sin(uT * (1.2 + 2.5 * aS.y) + aS.y * 50.0);',
-    '  vC = mix(vec3(1.0, 0.72, 0.42), vec3(1.0, 0.93, 0.82), settled) * (0.16 + 0.5 * fly + 0.3 * settled * tw) * uB * (1.0 + 0.45 * uHov);',
-    '  gl_PointSize = uPs * (1.0 + 0.7 * fly);',
+    '  float tw = 0.82 + 0.18 * sin(uT * (1.2 + 2.5 * aS.y) + aS.y * 50.0);',
+    '  vec3 warm = vec3(1.0, 0.93, 0.82) * tw * (1.0 + 0.25 * uHov); vec3 hot = vec3(1.0, 0.78, 0.5);',
+    '  vec3 col = uMode < 0.5 ? mix(mix(aC.rgb, max(aC.rgb, hot * 0.7), smoothstep(0.0, 0.3, e)), warm, smoothstep(0.55, 1.0, e)) : mix(warm, hot * 0.8, fly);',
+    '  vC = col * uB;',
+    '  gl_PointSize = uPs * (1.0 + 0.6 * fly);',
     '}'
   ].join('\n');
   var MASK_VS = 'attribute vec2 aP; uniform vec4 uR; varying vec2 vUV; void main(){ vUV = vec2(aP.x * 0.5 + 0.5, 0.5 - aP.y * 0.5); gl_Position = vec4(mix(uR.xy, uR.zw, aP * 0.5 + 0.5), 0.0, 1.0); }';
@@ -409,23 +411,22 @@
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', '开场影片：从原子到视界');
     el.innerHTML = '<canvas aria-hidden="true"></canvas>' +
-      '<button type="button" class="intro-go intro-word" tabindex="-1" aria-label="进入网站（access）"><span>access</span></button>' +
-      '<p class="intro-lang" aria-hidden="true"></p>';
+      '<button type="button" class="intro-go intro-word" tabindex="-1" aria-label="进入网站（access）"><span>access</span></button>';
     var cv = el.querySelector('canvas');
-    var gl, P, PG, PL, PGx, PD, PW, PM, vD, quad, vL, vG, vF, vWF, vWT, vWS, texA, texB, fbA, fbB, atlasTex, texM0, texM1, N = 1, dustArr;
+    var gl, P, PG, PL, PGx, PD, PW, PM, vD, quad, vL, vG, vF, vWF, vWT, vWS, vWC, minmax, texA, texB, fbA, fbB, atlasTex, texM0, texM1, N = 1, dustArr;
     try {
       gl = cv.getContext('webgl', { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: 'high-performance' });
       if (!gl) throw new Error('no webgl');
       P = program(gl, VS, SCENE_FS, 'aP'); PG = program(gl, VS, GLYPH_FS, 'aP');
       PL = program(gl, LORENZ_VS, PTS_FS_L, 'aV'); PGx = program(gl, GALAXY_VS, PTS_FS_G, 'aG'); PD = program(gl, DUST_VS, PTS_FS_G, 'aD');
-      PW = program(gl, WORD_VS, PTS_FS_G, ['aF', 'aT', 'aS']); PM = program(gl, MASK_VS, MASK_FS, 'aP');
+      PW = program(gl, WORD_VS, PTS_FS_G, ['aF', 'aT', 'aS', 'aC']); PM = program(gl, MASK_VS, MASK_FS, 'aP');
       quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
       vL = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vL); gl.bufferData(gl.ARRAY_BUFFER, lorenzData(), gl.STATIC_DRAW);
       vG = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vG); gl.bufferData(gl.ARRAY_BUFFER, galaxyData(), gl.STATIC_DRAW);
       dustArr = dustData(); vD = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vD); gl.bufferData(gl.ARRAY_BUFFER, dustArr, gl.STATIC_DRAW);
       vF = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vF); var ph = new Float32Array(2200 * 4); for (var pi = 0; pi < 2200; pi++) ph[pi * 4] = pi / 2200; gl.bufferData(gl.ARRAY_BUFFER, ph, gl.STATIC_DRAW);
-      vWF = gl.createBuffer(); vWT = gl.createBuffer(); vWS = gl.createBuffer();
+      vWF = gl.createBuffer(); vWT = gl.createBuffer(); vWS = gl.createBuffer(); vWC = gl.createBuffer(); minmax = gl.getExtension('EXT_blend_minmax');
       texA = tex(gl, gl.LINEAR); texB = tex(gl, gl.LINEAR); atlasTex = tex(gl, gl.NEAREST); texM0 = tex(gl, gl.LINEAR); texM1 = tex(gl, gl.LINEAR);
       fbA = gl.createFramebuffer(); fbB = gl.createFramebuffer();
     } catch (err) {
@@ -435,14 +436,13 @@
     }
     try { sessionStorage.setItem('gewu-intro', '1'); } catch (e) { /* ignore */ }
     document.body.appendChild(el);
-    var btn = el.querySelector('.intro-go'), lang = el.querySelector('.intro-lang');
+    var btn = el.querySelector('.intro-go');
     var W, H, dpr, gw, gh, cols, rows, S, oy0, bar = 0, q = 0, closing = false;
     var wordRect = { x: 0, y: 0, w: 1, h: 1 };
     function layoutWord() {
       var ww = Math.min(W * 0.78, 900), wh = ww * WCH / WCW, cx = W / 2, cy = H * 0.47;
       wordRect = { x: cx - ww / 2, y: cy - wh / 2, w: ww, h: wh };
       btn.style.left = wordRect.x + 'px'; btn.style.top = (cy - wh * 0.36) + 'px'; btn.style.width = ww + 'px'; btn.style.height = (wh * 0.72) + 'px';
-      lang.style.top = (cy + wh * 0.4) + 'px';
     }
     function resize() {
       dpr = Math.min(window.devicePixelRatio || 1, [2.5, 1.6, 1.1][q]);
@@ -471,7 +471,7 @@
 
     /* 终章时间线（真实秒）：影片约 15 秒后粒子开始聚拢，约 2.5 秒后聚成 “access” 并可点击；之后每隔一段时间换一种语言 */
     var finAt = window.GEWU_INTRO_REVEAL_AT !== undefined ? window.GEWU_INTRO_REVEAL_AT : CH.length * DUR - 1.2;
-    var fin = false, ready = false, NW = DUST_N + 4000, raster = [], wIdx = 0, curTo = null, wP0 = 0, morph = null, nextMorph = 0, hov = 0, hovT = 0;
+    var fin = false, ready = false, NW = 0, MAXP = 42000, raster = [], wIdx = 0, curTo = null, wP0 = 0, morph = null, nextMorph = 0, hov = 0, hovT = 0;
     function word(i) { if (!raster[i]) raster[i] = rasterWord(WORDS[i][0]); return raster[i]; }
     function targets(r) {
       var ink = r.ink, n = ink.length / 2, out = new Float32Array(NW * 2), sx = wordRect.w / WCW, sy = wordRect.h / WCH;
@@ -482,53 +482,50 @@
       }
       return out;
     }
-    function gmod(a, b) { return a - b * Math.floor(a / b); }
-    /* 起点：漂浮微粒此刻的位置（与 DUST_VS 同一公式），外加吸积盘上的 4000 颗 */
-    function startPositions(T) {
-      var out = new Float32Array(NW * 2), uA = W / 2 / S, offx = ox * 1.6 / S, offy = -oy * 1.6 / S, i;
-      for (i = 0; i < DUST_N; i++) {
-        var x = dustArr[i * 4], y = dustArr[i * 4 + 1], z = dustArr[i * 4 + 2], w = dustArr[i * 4 + 3];
-        var par = 0.55 + 0.9 * z, sp = 0.025 + 0.16 * z, px = x * uA, py = y * 1.15;
-        px += T * sp * (0.55 + 0.45 * Math.sin(w * 6.2832));
-        py += Math.sin(T * 0.35 + w * 12 + px * 1.7) * 0.09 * (0.4 + z) + T * 0.02 * (w - 0.45);
-        var ax = uA / par + 0.15, ay = 1.15 / par + 0.15;
-        px = gmod(px + ax, 2 * ax) - ax; py = gmod(py + ay, 2 * ay) - ay;
-        out[i * 2] = px * par + offx; out[i * 2 + 1] = py * par + offy;
-      }
-      for (; i < NW; i++) {
-        var a = Math.random() * 6.2832, r = 0.25 + Math.pow(Math.random(), 0.7) * 1.4;
-        out[i * 2] = Math.cos(a) * r + ox / S; out[i * 2 + 1] = Math.sin(a) * r * 0.16 - oy / S;
-      }
-      return out;
-    }
     function uploadWord(from, to) {
       gl.bindBuffer(gl.ARRAY_BUFFER, vWF); gl.bufferData(gl.ARRAY_BUFFER, from, gl.DYNAMIC_DRAW);
       gl.bindBuffer(gl.ARRAY_BUFFER, vWT); gl.bufferData(gl.ARRAY_BUFFER, to, gl.DYNAMIC_DRAW);
     }
     function maskTex(t, i) { gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, word(i).canvas); }
-    function setLang(i, show) {
-      lang.classList.remove('on');
-      setTimeout(function () { if (closing) return; lang.textContent = WORDS[i][0] + '  ·  ' + WORDS[i][1]; if (show) lang.classList.add('on'); }, show ? 120 : 0);
-    }
-    function beginFinale(T, tr) {
-      fin = true; wP0 = tr;
-      var seeds = new Float32Array(NW * 2);
-      for (var i = 0; i < NW; i++) { seeds[i * 2] = Math.random(); seeds[i * 2 + 1] = Math.random(); }
+    /* 终章开始：读回此刻画面（每个字符格一个像素），每个亮着的格子变成一颗同色同位置的粒子 */
+    function beginFinale(tr) {
+      fin = true; wP0 = tr; prev = -1;
+      var px = new Uint8Array(cols * rows * 4), idx = [], k;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbB); gl.readPixels(0, 0, cols, rows, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      for (k = 0; k < cols * rows; k++) if (Math.max(px[k * 4], px[k * 4 + 1], px[k * 4 + 2]) > 12) idx.push(k);
+      for (k = idx.length - 1; k > 0 && idx.length > MAXP; k--) { var r = Math.floor(Math.random() * (k + 1)), tmp = idx[k]; idx[k] = idx[r]; idx[r] = tmp; }
+      if (idx.length > MAXP) idx.length = MAXP;
+      /* 画面偏暗时（亮格太少）补一些从四周飞来的暗粒子，保证单词总能聚成 */
+      var MINP = 6000;
+      NW = Math.max(idx.length, MINP);
+      var from = new Float32Array(NW * 2), col = new Float32Array(NW * 4), seeds = new Float32Array(NW * 2), cx = cols / 2, cy = rows / 2, md = Math.hypot(cx, cy * gh / gw) || 1;
+      for (var m = idx.length; m < NW; m++) {
+        var ra = Math.random() * 6.2832, rr = (0.6 + Math.random() * 0.6) * Math.max(W, H) / S;
+        from[m * 2] = Math.cos(ra) * rr; from[m * 2 + 1] = Math.sin(ra) * rr * 0.6;
+        col[m * 4] = col[m * 4 + 1] = col[m * 4 + 2] = 0.02; col[m * 4 + 3] = 1; seeds[m * 2] = Math.random(); seeds[m * 2 + 1] = Math.random();
+      }
+      for (var n = 0; n < idx.length; n++) {
+        k = idx[n]; var i = k % cols, j = (k / cols) | 0;
+        from[n * 2] = ((i + 0.5) * gw / dpr - W / 2) / S; from[n * 2 + 1] = ((j + 0.5) * gh / dpr - H / 2) / S;
+        col[n * 4] = px[k * 4] / 255; col[n * 4 + 1] = px[k * 4 + 1] / 255; col[n * 4 + 2] = px[k * 4 + 2] / 255; col[n * 4 + 3] = 1;
+        seeds[n * 2] = 0.3 * Math.random() + 0.7 * Math.hypot(i - cx, (j - cy) * gh / gw) / md; seeds[n * 2 + 1] = Math.random();
+      }
       gl.bindBuffer(gl.ARRAY_BUFFER, vWS); gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
-      curTo = targets(word(0)); uploadWord(startPositions(T), curTo); maskTex(texM0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, vWC); gl.bufferData(gl.ARRAY_BUFFER, col, gl.STATIC_DRAW);
+      curTo = targets(word(0)); uploadWord(from, curTo); maskTex(texM0, 0);
       btn.classList.add('show');
     }
     function startMorph(tr) {
       var ni = (wIdx + 1) % WORDS.length, to = targets(word(ni));
       uploadWord(curTo, to); maskTex(texM1, ni);
-      morph = { i: ni, t0: tr, to: to, label: false };
+      morph = { i: ni, t0: tr, to: to };
     }
     function endMorph(tr) {
       wIdx = morph.i; curTo = morph.to; var t = texM0; texM0 = texM1; texM1 = t;
       morph = null; nextMorph = tr + HOLD; wP0 = -9;
     }
 
-    function drawPoints(c, t, tau, dim) {
+    function drawPoints(c, t, tau) {
       var ph = c.pts === 'phyllo';
       var pr = c.pts === 'lorenz' ? PL : PGx, buf = c.pts === 'lorenz' ? vL : (ph ? vF : vG), count = c.pts === 'lorenz' ? 36000 : (ph ? 2200 : 80000);
       var R = c.pts === 'lorenz' ? rotM(t * 0.12 + mx * 1.5, 0.25 + my * 0.8) : (ph ? rotM(mx * 0.8, 1.35 + 0.1 * Math.sin(t * 0.15) + my * 0.5) : rotM(t * 0.05 + mx * 1.2, 0.55 + 0.1 * Math.sin(t * 0.1) + my * 0.6));
@@ -538,7 +535,7 @@
       var sc = (c.pts === 'lorenz' ? 1.0 : 0.95) / (1 - 0.075 * sm(0, 7, tau));
       gl.uniform2f(u.uK, 2 * S * dpr * sc / (cols * gw), 2 * S * dpr * sc / (rows * gh));
       gl.uniform2f(u.uC, (cv.width / 2 + ox * dpr) * 2 / (cols * gw) - 1, (cv.height / 2 - oy * dpr) * 2 / (rows * gh) - 1);
-      gl.uniform1f(u.uPs, c.pts === 'lorenz' ? 1.6 : (ph ? 2.0 : 1.25)); gl.uniform1f(u.uFade, sm(0, 1.4, tau) * dens() * dim);
+      gl.uniform1f(u.uPs, c.pts === 'lorenz' ? 1.6 : (ph ? 2.0 : 1.25)); gl.uniform1f(u.uFade, sm(0, 1.4, tau) * dens());
       if (u.uCol) gl.uniform3f(u.uCol, 1.0, 0.78, 0.55);
       if (u.uMode) gl.uniform1f(u.uMode, ph ? 1 : 0);
       if (ph) gl.uniform1f(u.uT, tau);
@@ -562,19 +559,17 @@
       gl.drawArrays(gl.POINTS, 0, DUST_N);
       gl.disable(gl.BLEND);
     }
-    var hole = 0;
-    function renderChapter(k, fb, t, tau, dim, dustMul) {
+    function renderChapter(k, fb, t, tau) {
       var c = CH[k];
       gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.viewport(0, 0, cols, rows);
       gl.useProgram(P.p); var u = P.u;
       gl.uniform2f(u.uRes, cv.width, cv.height); gl.uniform2f(u.uCell, gw, gh); gl.uniform1f(u.uS, S * dpr);
       gl.uniform2f(u.uOff, ox * dpr, oy * dpr); gl.uniform1f(u.uT, t); gl.uniform1f(u.uTau, tau); gl.uniform1f(u.uId, c.id);
-      gl.uniform2f(u.uM, mx, my); gl.uniform1f(u.uDim, dim);
-      gl.uniform3f(u.uHole, (wordRect.x + wordRect.w / 2) * dpr, (H - wordRect.y - wordRect.h / 2) * dpr, hole); gl.uniform2f(u.uHoleR, wordRect.w * 0.62 * dpr, wordRect.h * 0.62 * dpr);
+      gl.uniform2f(u.uM, mx, my);
       gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-      if (c.pts) drawPoints(c, t, tau, dim);
-      drawDust(c, t, tau, dustMul);
+      if (c.pts) drawPoints(c, t, tau);
+      drawDust(c, t, tau, 1);
     }
     function clipRect() {
       var fx = 2 * dpr / (cols * gw), fy = 2 * dpr / (rows * gh);
@@ -587,10 +582,12 @@
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture); gl.uniform1i(u.uTex, 0);
       gl.uniform4f(u.uR, r[0], r[1], r[2], r[3]); gl.uniform1f(u.uM, m); gl.uniform1f(u.uT, tm);
       gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+      blendOn();
       gl.drawArrays(gl.TRIANGLES, 0, 6);
-      gl.disable(gl.BLEND);
+      blendOff();
     }
+    function blendOn() { gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); if (minmax) gl.blendEquation(minmax.MAX_EXT); }
+    function blendOff() { if (minmax) gl.blendEquation(gl.FUNC_ADD); gl.disable(gl.BLEND); }
     function drawWord(tm, p, turns, burst, bri, mode) {
       var u = PW.u;
       gl.useProgram(PW.p);
@@ -598,15 +595,16 @@
       gl.uniform2f(u.uK, 2 * S * dpr / (cols * gw), 2 * S * dpr / (rows * gh));
       gl.uniform2f(u.uC, cv.width / (cols * gw) - 1, cv.height / (rows * gh) - 1);
       gl.uniform2f(u.uWC, 0, (H / 2 - (wordRect.y + wordRect.h / 2)) / S);
-      gl.uniform1f(u.uPs, W < 600 ? 1.2 : 1.45); var inkCells = (wordRect.w * dpr / gw) * (wordRect.h * dpr / gh) * 0.3, crowd = Math.min(1, 3.5 * inkCells / NW);
-      gl.uniform1f(u.uB, bri * Math.max(0.15, crowd)); gl.uniform1f(u.uHov, hov);
+      var inkCells = (wordRect.w * dpr / gw) * (wordRect.h * dpr / gh) * 0.3, crowd = minmax ? 1 : Math.max(0.15, Math.min(1, 3.5 * inkCells / NW));
+      gl.uniform1f(u.uPs, 1.0); gl.uniform1f(u.uB, bri * crowd); gl.uniform1f(u.uHov, hov);
       gl.bindBuffer(gl.ARRAY_BUFFER, vWF); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, vWT); gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, vWS); gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
-      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+      gl.bindBuffer(gl.ARRAY_BUFFER, vWC); gl.enableVertexAttribArray(3); gl.vertexAttribPointer(3, 4, gl.FLOAT, false, 0, 0);
+      blendOn();
       gl.drawArrays(gl.POINTS, 0, NW);
-      gl.disable(gl.BLEND);
-      gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2);
+      blendOff();
+      gl.disableVertexAttribArray(1); gl.disableVertexAttribArray(2); gl.disableVertexAttribArray(3);
     }
 
     resize();
@@ -619,8 +617,8 @@
       fLast = now;
       if (fN >= 90) { if (fAcc / fN > 38 && q < 2) { q++; resize(); } fN = 0; fAcc = 0; }
       var tr = (now - t0) / 1000, t = tr * SPEED, tauR = (now - sT) / 1000;
-      if (!closing && !fin && tauR > DUR) { go(cur + 1); tauR = 0; }
-      if (!fin && tr >= finAt) beginFinale(t, tr);
+      /* 临近终章时不再换章，让最后一章完整亮起来再聚拢 */
+      if (!closing && !fin && tauR > DUR && tr < finAt - 0.6) { go(cur + 1); tauR = 0; }
       mx += (tmx - mx) * 0.04; my += (tmy - my) * 0.04;
       ox = -mx * 14; oy = oy0 - my * 10;
       hov += (hovT - hov) * 0.12;
@@ -630,20 +628,21 @@
       if (fin && wP0 < 0) gp = 1;
       if (fin && !ready && gp >= 1) {
         ready = true; btn.classList.add('ready'); btn.removeAttribute('tabindex'); btn.focus({ preventScroll: true }); el.classList.add('ready');
-        setLang(0, true); nextMorph = tr + HOLD;
+        nextMorph = tr + HOLD;
       }
       if (ready && !morph && tr >= nextMorph && !closing) startMorph(tr);
       var mp = morph ? Math.min(1, (tr - morph.t0) / MORPH) : 0;
-      if (morph && mp >= 0.5 && !morph.label) { morph.label = true; setLang(morph.i, true); }
-      var gpe = sm(0, 1, gp), dim = fin ? 1 - 0.45 * gpe : 1;
-      hole = fin ? 0.85 * gpe : 0;
-      boost = 1 + 1.8 * (prev >= 0 ? Math.sin(Math.PI * Math.min(1, mix)) : 0) + (fin && !ready ? 0.6 * Math.sin(Math.PI * gp) : 0);
-      renderChapter(cur, fbB, t, tauR * SPEED, dim, fin ? 1 - gpe : 1);
-      if (prev >= 0) renderChapter(prev, fbA, t, (now - pT) / 1000 * SPEED, dim, fin ? 1 - gpe : 1);
+      boost = 1 + 1.8 * (prev >= 0 ? Math.sin(Math.PI * Math.min(1, mix)) : 0);
+      if (!fin) {
+        renderChapter(cur, fbB, t, tauR * SPEED);
+        if (prev >= 0) renderChapter(prev, fbA, t, (now - pT) / 1000 * SPEED);
+        if (tr >= finAt && tauR >= 0.6 && !closing) { beginFinale(tr); gp = 0; }
+      }
       if (fin) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, fbB); gl.viewport(0, 0, cols, rows);
+        gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
         drawDust(CH[cur], t + 41, 9, 0.8 * sm(0.55, 1, gp));
-        var M = 0.92 * (1 + 0.25 * hov);
+        var M = 0.62 * (1 + 0.25 * hov);
         if (morph) {
           drawMask(t, texM0, M * (1 - sm(0, 0.25, mp)), tr);
           drawMask(t, texM1, M * sm(0.72, 1, mp), tr);

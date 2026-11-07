@@ -221,10 +221,9 @@
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', '开场动画：格物');
     el.innerHTML = '<canvas aria-hidden="true"></canvas><div class="intro-vig" aria-hidden="true"></div>' +
-      '<button type="button" class="intro-go intro-word" tabindex="-1" aria-label="进入网站（access）"><span>access</span></button>' +
-      '<p class="intro-lang" aria-hidden="true"></p>';
+      '<button type="button" class="intro-go intro-word" tabindex="-1" aria-label="进入网站（access）"><span>access</span></button>';
     document.body.appendChild(el);
-    var cv = el.querySelector('canvas'), ctx = cv.getContext('2d'), btn = el.querySelector('.intro-go'), lang = el.querySelector('.intro-lang');
+    var cv = el.querySelector('canvas'), ctx = cv.getContext('2d'), btn = el.querySelector('.intro-go');
     var W, H, cols, rows, V, bufA, bufB, rnd, font, chh, cw, wr = { x: 0, y: 0, w: 1, h: 1 };
     function resize() {
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -240,8 +239,7 @@
       var ww = Math.min(W * 0.78, 900), wh = ww * 300 / 1024, cy = H * 0.47;
       wr = { x: W / 2 - ww / 2, y: cy - wh / 2, w: ww, h: wh };
       btn.style.left = wr.x + 'px'; btn.style.top = (cy - wh * 0.36) + 'px'; btn.style.width = ww + 'px'; btn.style.height = (wh * 0.72) + 'px';
-      lang.style.top = (cy + wh * 0.4) + 'px';
-      cells = []; if (fin) { pts = cellsOf(wIdx).map(function (c) { return { fx: c.x, fy: c.y, tx: c.x, ty: c.y, v: c.v, nv: c.v, d: 0 }; }); wP0 = -9; morph = null; }
+      cells = []; if (fin) { pts = cellsOf(wIdx).map(function (c) { return { fx: c.x, fy: c.y, tx: c.x, ty: c.y, v: c.v, nv: c.v, d: 0, ch: '', col: '' }; }); wP0 = -9; morph = null; }
     }
     /* 把一个词画进按钮区域，按字符格统计覆盖率：每个有墨的格子就是一个粒子的终点 */
     var cells = [];
@@ -271,24 +269,25 @@
     var cur = (window.GEWU_INTRO_FROM | 0) % SCENES.length, prev = -1, sT = performance.now(), pT = 0, mx = 0, my = 0, tmx = 0, tmy = 0, raf, closing = false, t0 = performance.now();
     function go(k) { prev = cur; pT = sT; cur = (k + SCENES.length) % SCENES.length; sT = performance.now(); }
     var finAt = window.GEWU_INTRO_REVEAL_AT !== undefined ? window.GEWU_INTRO_REVEAL_AT : SCENES.length * DUR - 0.8;
-    function setLang(i) {
-      lang.classList.remove('on');
-      setTimeout(function () { if (closing) return; lang.textContent = WORDS[i][0] + '  ·  ' + WORDS[i][1]; lang.classList.add('on'); }, 120);
-    }
+    /* 终章开始：此刻画面上每个亮着的字符都变成一颗粒子（保留原来的字符、颜色和位置），再螺旋聚成单词 */
     function beginFinale(tr) {
-      fin = true; wP0 = tr; btn.classList.add('show');
-      pts = cellsOf(0).map(function (c) {
-        var a = Math.random() * Math.PI * 2, r = Math.max(W, H) * (0.35 + Math.random() * 0.4);
-        return { fx: W / 2 + Math.cos(a) * r, fy: H * 0.47 + Math.sin(a) * r * 0.6, tx: c.x, ty: c.y, v: 0, nv: c.v, d: Math.random() };
-      });
+      fin = true; wP0 = tr; prev = -1; btn.classList.add('show');
+      var pal = SCENES[cur].pal, tc = cellsOf(0), b = bufB, cx = W / 2, cy = H * 0.47, md = Math.hypot(cx, cy) || 1;
+      pts = [];
+      for (var k = 0; k < b.a.length; k++) {
+        if (b.a[k] < 0.03 || !b.ch[k]) continue;
+        var x = ((k % b.cols) + (b.w[k] ? 1 : 0.5)) * cw, y = ((k / b.cols | 0) + 0.55) * chh, c = tc[Math.floor(Math.random() * tc.length)];
+        pts.push({ fx: x, fy: y, tx: c.x, ty: c.y, v: Math.min(1, b.a[k]), nv: c.v, d: 0.3 * Math.random() + 0.7 * Math.hypot(x - cx, y - cy) / md, ch: b.ch[k], col: pal[b.c[k]] || pal[0] });
+      }
+      tc.forEach(function (c) { pts.push({ fx: c.x, fy: c.y, tx: c.x, ty: c.y, v: 0, nv: c.v, d: 0.9 + 0.1 * Math.random(), ch: '', col: '' }); });
     }
     function startMorph(tr) {
       var ni = (wIdx + 1) % WORDS.length, nc = cellsOf(ni), n = Math.max(pts.length, nc.length), out = [];
       for (var i = 0; i < n; i++) {
         var o = pts[i % pts.length], c = nc[i % nc.length];
-        out.push({ fx: o.tx, fy: o.ty, tx: c.x, ty: c.y, v: o.nv, nv: i < nc.length ? c.v : 0, d: Math.random() });
+        out.push({ fx: o.tx, fy: o.ty, tx: c.x, ty: c.y, v: o.nv, nv: i < nc.length ? c.v : 0, d: Math.random(), ch: '', col: '' });
       }
-      pts = out; morph = { i: ni, t0: tr, label: false };
+      pts = out; morph = { i: ni, t0: tr };
     }
     function drawWord(p, spiral, tr) {
       var cx = W / 2, cy = H * 0.47, RAMP2 = '.:-=+*#%@';
@@ -307,7 +306,8 @@
         }
         var v = q.v + (q.nv - q.v) * e;
         if (e >= 1) { if (v < 0.05) continue; ctx.fillStyle = '#f3e7d6'; ctx.globalAlpha = Math.min(1, 0.35 + v * 0.75); ctx.fillText(RAMP2.charAt(Math.min(8, Math.floor(v * 9))), x, y); }
-        else { ctx.fillStyle = '#ffcf96'; ctx.globalAlpha = 0.3 + 0.6 * Math.sin(Math.PI * e); ctx.fillText(e < 0.5 ? '*' : '+', x, y); }
+        else if (q.ch && e < 0.55) { ctx.fillStyle = q.col; ctx.globalAlpha = Math.min(1, q.v * (1 - e) + 0.5 * Math.sin(Math.PI * e)); ctx.fillText(q.ch, x, y); }
+        else { if (e <= 0) continue; ctx.fillStyle = '#ffcf96'; ctx.globalAlpha = 0.3 + 0.6 * Math.sin(Math.PI * e); ctx.fillText(e < 0.75 ? '*' : '+', x, y); }
       }
       ctx.globalAlpha = 1;
     }
@@ -331,14 +331,15 @@
       raf = requestAnimationFrame(frame);
       var tr = (now - t0) / 1000, t = tr * SPEED, tau = (now - sT) / 1000;
       if (!closing && !fin && tau > DUR) { go(cur + 1); tau = 0; }
-      if (!fin && tr >= finAt) beginFinale(tr);
+      if (!fin && tr >= finAt && !closing) beginFinale(tr);
       mx += (tmx - mx) * 0.05; my += (tmy - my) * 0.05;
       V.cx = V.cx0 - mx * 18; V.cy = V.cy0 - my * 12;
       ctx.globalAlpha = 1; ctx.fillStyle = '#07080a'; ctx.fillRect(0, 0, W, H);
       ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       var prog = prev >= 0 ? sm(0, 1, tau / TRANS) : 1;
-      renderScene(SCENES[cur], bufB, tau * SPEED, t);
-      if (prog < 1) {
+      if (!fin) renderScene(SCENES[cur], bufB, tau * SPEED, t);
+      if (fin) { /* 画面已经化成粒子 */ }
+      else if (prog < 1) {
         renderScene(SCENES[prev], bufA, (now - pT) / 1000 * SPEED, t);
         paint(bufA, SCENES[prev].pal, function (k) { return rnd[k] >= prog + 0.05; });
         paint(bufB, SCENES[cur].pal, function (k) { return rnd[k] < prog - 0.05; });
@@ -362,18 +363,13 @@
       }
       ctx.globalAlpha = 1;
       if (fin) {
-        var gp = wP0 < 0 ? 1 : Math.min(1, Math.max(0, (tr - wP0) / GATHER)), gpe = sm(0, 1, gp);
-        ctx.fillStyle = 'rgba(7, 8, 10, ' + (0.5 * gpe).toFixed(3) + ')'; ctx.fillRect(0, 0, W, H);
-        var g = ctx.createRadialGradient(W / 2, H * 0.47, 0, W / 2, H * 0.47, wr.w * 0.62);
-        g.addColorStop(0, 'rgba(7, 8, 10, ' + (0.85 * gpe).toFixed(3) + ')'); g.addColorStop(1, 'rgba(7, 8, 10, 0)');
-        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-        if (!ready && gp >= 1) { ready = true; btn.classList.add('ready'); btn.removeAttribute('tabindex'); btn.focus({ preventScroll: true }); el.classList.add('ready'); setLang(0); nextMorph = tr + HOLD; }
+        var gp = wP0 < 0 ? 1 : Math.min(1, Math.max(0, (tr - wP0) / GATHER));
+        if (!ready && gp >= 1) { ready = true; btn.classList.add('ready'); btn.removeAttribute('tabindex'); btn.focus({ preventScroll: true }); el.classList.add('ready'); nextMorph = tr + HOLD; }
         if (ready && !morph && tr >= nextMorph && !closing) startMorph(tr);
         if (morph) {
           var mp = Math.min(1, (tr - morph.t0) / MORPH);
-          if (mp >= 0.5 && !morph.label) { morph.label = true; setLang(morph.i); }
           drawWord(mp, false, tr);
-          if (mp >= 1) { wIdx = morph.i; pts = pts.filter(function (p) { return p.nv > 0; }).map(function (p) { return { fx: p.tx, fy: p.ty, tx: p.tx, ty: p.ty, v: p.nv, nv: p.nv, d: 0 }; }); morph = null; nextMorph = tr + HOLD; }
+          if (mp >= 1) { wIdx = morph.i; pts = pts.filter(function (p) { return p.nv > 0; }).map(function (p) { return { fx: p.tx, fy: p.ty, tx: p.tx, ty: p.ty, v: p.nv, nv: p.nv, d: 0, ch: '', col: '' }; }); morph = null; nextMorph = tr + HOLD; }
         } else drawWord(gp, true, tr);
       }
     }
