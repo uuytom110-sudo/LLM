@@ -20,6 +20,7 @@
   --s-biology: #a4d46a;
   --s-physics: #6fd2ec;
   --s-model: #f0b46a;
+  --s-motion: #b9a2f5;
   --f-display: "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
   --f-body: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
   --f-mono: "DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -31,14 +32,14 @@
   :root:not([data-theme="dark"]) {
     --paper: #eff2f1; --sheet: #ffffff; --ink: #0f1214; --muted: #5b6567; --line: #d6dcda; --soft: #e5eae8;
     --blue: #1f5d99; --red: #c7392b; --green: #237a48; --amber: #9a650c;
-    --s-chinese: #a4502a; --s-math: #2a5f8f; --s-english: #6a4a96; --s-history: #8b6a16; --s-geography: #1f7465; --s-politics: #a03a5a; --s-biology: #4c7d22; --s-physics: #17708a; --s-model: #a05a12;
+    --s-chinese: #a4502a; --s-math: #2a5f8f; --s-english: #6a4a96; --s-history: #8b6a16; --s-geography: #1f7465; --s-politics: #a03a5a; --s-biology: #4c7d22; --s-physics: #17708a; --s-model: #a05a12; --s-motion: #5b45a0;
     color-scheme: light;
   }
 }
 :root[data-theme="light"] {
   --paper: #eff2f1; --sheet: #ffffff; --ink: #0f1214; --muted: #5b6567; --line: #d6dcda; --soft: #e5eae8;
   --blue: #1f5d99; --red: #c7392b; --green: #237a48; --amber: #9a650c;
-  --s-chinese: #a4502a; --s-math: #2a5f8f; --s-english: #6a4a96; --s-history: #8b6a16; --s-geography: #1f7465; --s-politics: #a03a5a; --s-biology: #4c7d22; --s-physics: #17708a; --s-model: #a05a12;
+  --s-chinese: #a4502a; --s-math: #2a5f8f; --s-english: #6a4a96; --s-history: #8b6a16; --s-geography: #1f7465; --s-politics: #a03a5a; --s-biology: #4c7d22; --s-physics: #17708a; --s-model: #a05a12; --s-motion: #5b45a0;
   color-scheme: light;
 }
 
@@ -723,3 +724,16 @@ figure.geo figcaption { font-size: .82rem; color: var(--muted); }
 .intro .intro-go.intro-word:hover, .intro .intro-go.intro-word:focus { background: transparent; }
 .intro .intro-go.intro-word:focus-visible { box-shadow: none; outline: none; }
 .intro.ready { cursor: pointer; }
+
+/* ---------- 动点题：可拖动时间的动态图形 ---------- */
+.dyn { display: grid; gap: 10px; padding: 12px; border-radius: 16px; border: 1px solid var(--glass-rim); background: color-mix(in srgb, var(--paper) 45%, transparent); }
+.dyn-fig figure.geo { margin: 0; }
+.dyn-fig .geo-svg { margin: 0 auto; max-height: 300px; }
+.dyn-info { display: grid; gap: 8px; }
+.dyn .slider { grid-template-columns: auto 1fr auto; }
+.dyn .slider b { white-space: nowrap; min-width: 3.4em; }
+.dyn-info .readout { grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); }
+.dyn-info .readout div:first-child, .dyn-info .readout div:nth-child(n+4) { grid-column: auto; }
+.dyn-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .9rem; color: var(--muted); }
+.dyn-checks li { padding: 4px 10px; border-radius: 10px; border: 1px dashed var(--glass-rim); }
+.dyn-checks li.hit { color: var(--ink); border-style: solid; border-color: color-mix(in srgb, var(--green) 60%, var(--glass-rim)); background: color-mix(in srgb, var(--green) 10%, transparent); }

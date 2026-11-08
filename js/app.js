@@ -187,13 +187,13 @@
 
     var html = '';
     html += '<section class="hero"><canvas class="hero-field" aria-hidden="true"></canvas><div class="hero-in">' +
-      '<p class="eyebrow">GEWU / 八年级上册 · 生物 · 物理 · 手拉手模型</p>' +
+      '<p class="eyebrow">GEWU / 八年级上册 · 生物 · 物理 · 地理 · 手拉手 · 动点</p>' +
       '<h1 class="hero-title">格物<br>致知。</h1>' +
       '<p class="sub">知识点 → 例题研究 → 练习 → 错题 → 卡片。做错的题自动进错题本，进度只保存在这台设备上。</p>' +
       '<div class="hero-cta"><a class="btn primary" href="#mock">开始综合模拟</a><a class="btn ghost" href="#wrong">错题本 · ' + wn + '</a></div></div>' +
       '<div class="hero-side"><div id="countdown">' + countdownHTML() + '</div></div></section>';
 
-    html += '<section class="stack"><div class="sec-head"><h2><span class="idx">01</span>三个专题</h2><span class="muted small">点进去看知识点、例题、做题、背卡片</span></div><div class="subjects">' +
+    html += '<section class="stack"><div class="sec-head"><h2><span class="idx">01</span>五个专题</h2><span class="muted small">点进去看知识点、例题、做题、背卡片</span></div><div class="subjects">' +
       SUBJECTS.map(function (s) {
         var st = subjStats(s);
         var exN = (s.examples || []).length, exD = (s.examples || []).filter(function (e) { return S.seen['ex/' + e.id]; }).length;
@@ -205,12 +205,12 @@
 
     html += '<section class="quick">' +
       '<a class="sheet" href="#model" data-act="jumptab" data-s="model" data-v="lab"><strong>动手旋转</strong><span>拖动小三角形，亲眼看手拉手的结论始终成立</span></a>' +
-      '<a class="sheet" href="#mock"><strong>综合模拟</strong><span>三个专题混合出题，交卷后统一批改</span></a>' +
+      '<a class="sheet" href="#mock"><strong>综合模拟</strong><span>五个专题混合出题，交卷后统一批改</span></a>' +
       '<a class="sheet" href="#wrong"><strong>错题本 · ' + wn + ' 题</strong><span>' + (wn ? '重做做对就会移出' : '目前没有错题') + '</span></a>' +
       '</section>';
 
     html += '<section class="stack search"><h2><span class="idx">02</span>查知识点</h2>' +
-      '<input id="search-input" type="search" placeholder="输入关键词，如：反射弧、凝华、平面镜、手拉手、8 字型" autocomplete="off" value="' + esc(ui.search) + '">' +
+      '<input id="search-input" type="search" placeholder="输入关键词，如：反射弧、凝华、秦岭、手拉手、将军饮马" autocomplete="off" value="' + esc(ui.search) + '">' +
       '<div id="search-results" class="results"></div></section>';
 
     html += '<p class="foot">生物学、物理按 2024 新版人教版八年级上册整理；手拉手模型只用八年级上册的全等三角形、角平分线、等腰三角形知识。如与你们学校的教材版本或考试范围不同，以课本和老师划的重点为准。' +
@@ -533,7 +533,7 @@
     shuffle(quotas).forEach(function (x) { if (left > 0 && x.k < x.q.length) { x.k++; left--; } });
     quotas.forEach(function (x) { picks = picks.concat(shuffle(x.q).slice(0, x.k).map(function (q) { return q.id; })); });
     picks.sort(function (a, b) { return SUBJECTS.indexOf(SMAP[QMAP[a].subj]) - SUBJECTS.indexOf(SMAP[QMAP[b].subj]); });
-    var names = (chosen.length === SUBJECTS.length ? '三科综合' : chosen.map(function (s) { return s.name; }).join('、')) + (ui.mockHot ? ' · 期中高频' : '');
+    var names = (chosen.length === SUBJECTS.length ? '全部综合' : chosen.map(function (s) { return s.name; }).join('、')) + (ui.mockHot ? ' · 期中高频' : '');
     startQuiz({ title: '模拟 · ' + names, ids: picks, mode: 'exam', back: '#mock', mock: names });
   }
 

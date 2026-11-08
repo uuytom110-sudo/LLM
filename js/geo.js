@@ -364,17 +364,56 @@ window.GEWU_GEO = (function () {
   }
 
   /* ---------- 例题（题型研究） ---------- */
-  var exState = { hint: {}, sol: {}, cong: {}, vary: {} };
+  var exState = { hint: {}, sol: {}, cong: {}, vary: {}, t: {}, mode: {} };
+  /* 动点题：ex.dyn = { min, max, step, start, label, unit, rate, modes: ['情形名'], marks: [{ v, label, m（只在第 m 种情形显示，可省略） }], fig(t, m) → 图形, info(t, m) → 说明 HTML }
+     拖动滑块（或点“播放”）时，图形和说明随时间 t 实时更新 */
+  function fmtT(x) { return String(Math.round(x * 100) / 100); }
+  function dynT(ex) { var t = exState.t[ex.id]; return t === undefined ? (ex.dyn.start === undefined ? ex.dyn.min : ex.dyn.start) : t; }
+  function dynM(ex) { return exState.mode[ex.id] || 0; }
+  function dynFig(ex, t, cong) { return '<figure class="geo' + (cong ? ' show-cong' : '') + '">' + figure(ex.dyn.fig(t, dynM(ex)), { label: ex.title }) + '</figure>'; }
+  function dynBlock(ex, cong) {
+    var d = ex.dyn, t = dynT(ex);
+    return '<div class="dyn" data-dyn="' + ex.id + '">' +
+      (d.modes ? '<div class="chips">' + d.modes.map(function (m, k) { return '<button type="button" class="chip' + (dynM(ex) === k ? ' on' : '') + '" data-x="mode" data-v="' + ex.id + '|' + k + '">' + esc(m) + '</button>'; }).join('') + '</div>' : '') +
+      '<div class="dyn-fig">' + dynFig(ex, t, cong) + '</div>' +
+      '<div class="dyn-info">' + d.info(t, dynM(ex)) + '</div>' +
+      '<label class="slider"><span>' + esc(d.label || 't') + '</span><input type="range" min="' + d.min + '" max="' + d.max + '" step="' + (d.step || 0.01) + '" value="' + t + '" data-dyn-range="' + ex.id + '" aria-label="' + esc(d.label || 't') + '"><b class="mono dyn-v">' + fmtT(t) + (d.unit || '') + '</b></label>' +
+      '<div class="row"><button type="button" class="btn sm" data-x="play" data-v="' + ex.id + '">▶ 播放运动过程</button>' +
+      (d.marks || []).filter(function (m) { return m.m === undefined || m.m === dynM(ex); }).map(function (m) { return '<button type="button" class="btn sm" data-x="mark" data-v="' + ex.id + '|' + m.v + '">' + esc(m.label) + '</button>'; }).join('') + '</div></div>';
+  }
+  function dynUpdate(ex, t) {
+    exState.t[ex.id] = t;
+    var box = document.querySelector('[data-dyn="' + ex.id + '"]'); if (!box) return;
+    var cong = !!exState.cong[ex.id];
+    box.querySelector('.dyn-fig').innerHTML = dynFig(ex, t, cong);
+    box.querySelector('.dyn-info').innerHTML = ex.dyn.info(t, dynM(ex));
+    box.querySelector('.dyn-v').textContent = fmtT(t) + (ex.dyn.unit || '');
+    var r = box.querySelector('[data-dyn-range]'); if (r && document.activeElement !== r) r.value = t;
+  }
+  var playing = null;
+  function playDyn(ex) {
+    if (playing) { cancelAnimationFrame(playing.raf); playing = null; }
+    var d = ex.dyn, t0 = dynT(ex); if (t0 >= d.max - 1e-6) t0 = d.min;
+    var start = performance.now(), rate = d.rate || (d.max - d.min) / 4;
+    playing = { id: ex.id };
+    (function step(now) {
+      if (!playing || playing.id !== ex.id || !document.querySelector('[data-dyn="' + ex.id + '"]')) { playing = null; return; }
+      var t = Math.min(d.max, t0 + (now - start) / 1000 * rate);
+      dynUpdate(ex, t);
+      if (t < d.max) playing.raf = requestAnimationFrame(step); else playing = null;
+    })(start);
+  }
   function exCard(ex, i, done) {
     var nh = exState.hint[ex.id] || 0, sol = !!exState.sol[ex.id], cong = !!exState.cong[ex.id];
     var figs = (ex.figs || (ex.fig ? [ex.fig] : [])).map(function (f, k) {
       return '<figure class="geo' + (cong ? ' show-cong' : '') + '">' + figure(f, { label: ex.title + ' 图' + (k + 1) }) + (f.cap ? '<figcaption>' + esc(f.cap) + '</figcaption>' : '') + '</figure>';
     }).join('');
-    var hasCong = (ex.figs || [ex.fig]).some(function (f) { return f && f.cong && f.cong.length; });
+    if (ex.dyn) figs = '';
+    var hasCong = (ex.dyn ? [ex.dyn.fig(dynT(ex), dynM(ex))] : (ex.figs || [ex.fig])).some(function (f) { return f && f.cong && f.cong.length; });
     var h = '<article class="sheet stack ex" id="ex-' + ex.id + '">' +
       '<div class="qmeta"><span class="chip">' + esc(ex.type) + '</span>' + (ex.level ? '<span class="tag' + (ex.level === '基础' ? ' calm' : ex.level === '真题' ? ' src' : '') + '">' + esc(ex.level) + '</span>' : '') + (done ? '<span class="seen">✓ 已掌握</span>' : '') + '</div>' +
       '<h3><span class="idx mono">例 ' + (i + 1) + '</span>' + esc(ex.title) + '</h3>' +
-      (figs ? '<div class="ex-figs">' + figs + '</div>' : '') +
+      (figs ? '<div class="ex-figs">' + figs + '</div>' : '') + (ex.dyn ? dynBlock(ex, cong) : '') +
       '<div class="stem">' + ex.q + '</div>' + (ex.art ? '<pre class="diagram">' + esc(ex.art) + '</pre>' : '') +
       (ex.asks ? '<ol class="asks">' + ex.asks.map(function (a) { return '<li>' + a + '</li>'; }).join('') + '</ol>' : '') +
       '<div class="row">' +
@@ -411,6 +450,14 @@ window.GEWU_GEO = (function () {
       var b = e.target.closest('[data-x]'); if (!b || !el.contains(b)) return;
       var k = b.getAttribute('data-x'), id = b.getAttribute('data-v');
       if (k === 'jump') { e.preventDefault(); var t = document.getElementById('ex-' + id); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+      if (k === 'play' || k === 'mark' || k === 'mode') {
+        var ref = k === 'play' ? [id] : id.split('|'), ex0 = list.filter(function (x) { return x.id === ref[0]; })[0];
+        if (!ex0) return;
+        if (k === 'play') playDyn(ex0);
+        else if (k === 'mark') { playing = null; dynUpdate(ex0, +ref[1]); }
+        else { exState.mode[ex0.id] = +ref[1]; var tmp0 = document.createElement('div'); tmp0.innerHTML = dynBlock(ex0, !!exState.cong[ex0.id]); b.closest('.dyn').replaceWith(tmp0.firstChild); }
+        return;
+      }
       if (k === 'vary') { exState.vary[id] = 1; id = id.replace(/-\d+$/, ''); }
       else if (k === 'hint') exState.hint[id] = (exState.hint[id] || 0) + 1;
       else if (k === 'sol') exState.sol[id] = !exState.sol[id];
@@ -421,6 +468,11 @@ window.GEWU_GEO = (function () {
       var tmp = document.createElement('div'); tmp.innerHTML = exCard(list[idx], idx, api.isDone(id));
       card.replaceWith(tmp.firstChild);
       if (k === 'hint' && window.GEWU_FX) { var lis = document.querySelectorAll('#ex-' + id + ' .think li'); window.GEWU_FX.scramble(lis[lis.length - 1], 600); }
+    };
+    el.oninput = function (e) {
+      var id = e.target.getAttribute && e.target.getAttribute('data-dyn-range'); if (!id) return;
+      var ex0 = list.filter(function (x) { return x.id === id; })[0]; if (!ex0) return;
+      playing = null; dynUpdate(ex0, +e.target.value);
     };
   }
 
