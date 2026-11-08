@@ -182,38 +182,46 @@
       '<div><strong>' + m + '</strong><span>分钟</span></div></div>';
   }
 
+  /* 首页专题按类别排成几行（语文·历史·地理 / 生物·物理 / 数学专题），每行铺满，不留孤零零的一张卡 */
+  var ROWS = [['chinese', 'history', 'geography'], ['biology', 'physics'], ['model', 'motion']];
+  function subjectRows() {
+    var used = {}, rows = ROWS.map(function (ids) { return ids.filter(function (id) { return SMAP[id]; }).map(function (id) { used[id] = 1; return SMAP[id]; }); });
+    var rest = SUBJECTS.filter(function (s) { return !used[s.id]; });
+    if (rest.length) rows.push(rest);
+    return rows.filter(function (r) { return r.length; });
+  }
   function renderHome() {
     var wn = wrongIds().length;
 
     var html = '';
     html += '<section class="hero"><canvas class="hero-field" aria-hidden="true"></canvas><div class="hero-in">' +
-      '<p class="eyebrow">GEWU / 八年级上册 · 生物 · 物理 · 地理 · 手拉手 · 动点</p>' +
+      '<p class="eyebrow">GEWU / 八年级上册 · 语文 · 历史 · 地理 · 生物 · 物理 · 数学专题</p>' +
       '<h1 class="hero-title">格物<br>致知。</h1>' +
       '<p class="sub">知识点 → 例题研究 → 练习 → 错题 → 卡片。做错的题自动进错题本，进度只保存在这台设备上。</p>' +
       '<div class="hero-cta"><a class="btn primary" href="#mock">开始综合模拟</a><a class="btn ghost" href="#wrong">错题本 · ' + wn + '</a></div></div>' +
       '<div class="hero-side"><div id="countdown">' + countdownHTML() + '</div></div></section>';
 
-    html += '<section class="stack"><div class="sec-head"><h2><span class="idx">01</span>五个专题</h2><span class="muted small">点进去看知识点、例题、做题、背卡片</span></div><div class="subjects">' +
-      SUBJECTS.map(function (s) {
+    html += '<section class="stack"><div class="sec-head"><h2><span class="idx">01</span>七个专题</h2><span class="muted small">点进去看知识点、例题、做题、背卡片</span></div><div class="subjects">' +
+      subjectRows().map(function (row) { return '<div class="subj-row">' + row.map(function (s) {
         var st = subjStats(s);
         var exN = (s.examples || []).length, exD = (s.examples || []).filter(function (e) { return S.seen['ex/' + e.id]; }).length;
         return '<a class="subj" href="#' + s.id + '" style="--c:var(--s-' + s.id + ')">' +
-          '<span class="subj-bigglyph" aria-hidden="true">' + s.short + '</span><div class="subj-pic">' + (ART.svg[s.id] || '') + '</div><div class="subj-top"><span class="subj-glyph">' + s.short + '</span><div><h3>' + s.name + '</h3><div class="book">' + esc(s.book) + '</div></div></div>' +
+          '<span class="subj-bigglyph" aria-hidden="true">' + s.short + '</span><div class="subj-pic">' + (ART.svg[s.id] || '') + '</div><div class="subj-top"><span class="subj-glyph">' + s.short + '</span><div><h3>' + s.name + '</h3><div class="book">' + esc(s.book.replace(/（[^）]*）/g, '').replace(/\s*·\s*/g, ' · ')) + '</div></div></div>' +
           '<div class="bar"><i style="width:' + pct(st.right, st.total) + '%"></i></div>' +
           '<div class="subj-stats"><span>做对 <b class="mono">' + st.right + '</b>/' + st.total + ' 题</span>' + (exN ? '<span>例题 ' + exD + '/' + exN + '</span>' : '<span>复习 ' + st.seen + '/' + st.chapters + ' 章</span>') + '<span>卡片 ' + st.known + '/' + st.cards + '</span></div></a>';
-      }).join('') + '</div></section>';
+      }).join('') + '</div>'; }).join('') + '</div></section>';
 
     html += '<section class="quick">' +
       '<a class="sheet" href="#model" data-act="jumptab" data-s="model" data-v="lab"><strong>动手旋转</strong><span>拖动小三角形，亲眼看手拉手的结论始终成立</span></a>' +
-      '<a class="sheet" href="#mock"><strong>综合模拟</strong><span>五个专题混合出题，交卷后统一批改</span></a>' +
+      '<a class="sheet" href="#mock"><strong>综合模拟</strong><span>七个专题混合出题，交卷后统一批改</span></a>' +
       '<a class="sheet" href="#wrong"><strong>错题本 · ' + wn + ' 题</strong><span>' + (wn ? '重做做对就会移出' : '目前没有错题') + '</span></a>' +
       '</section>';
 
     html += '<section class="stack search"><h2><span class="idx">02</span>查知识点</h2>' +
-      '<input id="search-input" type="search" placeholder="输入关键词，如：反射弧、凝华、秦岭、手拉手、将军饮马" autocomplete="off" value="' + esc(ui.search) + '">' +
+      '<input id="search-input" type="search" placeholder="输入关键词，如：三峡、辛亥革命、秦岭、反射弧、将军饮马" autocomplete="off" value="' + esc(ui.search) + '">' +
       '<div id="search-results" class="results"></div></section>';
 
-    html += '<p class="foot">生物学、物理按 2024 新版人教版八年级上册整理；手拉手模型只用八年级上册的全等三角形、角平分线、等腰三角形知识。如与你们学校的教材版本或考试范围不同，以课本和老师划的重点为准。' +
+    html += '<p class="foot">语文、历史按 2025 年秋季起使用的统编版新教材整理；生物学、物理、地理按 2024 新版人教版八年级上册整理；手拉手模型、动点问题只用八年级上册的全等三角形、轴对称、等腰三角形知识。如与你们学校的教材版本或考试范围不同，以课本和老师划的重点为准。' +
       '<br><button type="button" class="link" data-act="replay">重播开场动画</button></p>';
 
     app.innerHTML = html;
@@ -262,9 +270,9 @@
     var tab = ui.tab[s.id] || 'learn';
     var st = subjStats(s);
     var html = '<section class="subj-hero band" style="--c:var(--s-' + s.id + ')"><canvas class="page-field" aria-hidden="true"></canvas><div class="subj-head"><p class="eyebrow">' + esc(s.book) + '</p><h1>' + s.name + '</h1>' +
-      '<p class="muted small">做对 ' + st.right + '/' + st.total + ' 题 · 已复习 ' + st.seen + '/' + st.chapters + ' 章 · 卡片记住 ' + st.known + '/' + st.cards + '</p>' +
+      '<ul class="subj-meta"><li><b>' + st.right + '</b>/' + st.total + ' 题做对</li><li><b>' + st.seen + '</b>/' + st.chapters + ' 章已复习</li><li><b>' + st.known + '</b>/' + st.cards + ' 张卡片记住</li></ul>' +
       '<div class="head-pic">' + (ART.svg[s.id] || '') + '</div></div>' + ascii(s.id, 'board') + '</section>';
-    if (s.tip) html += '<div class="tip"><b>考前提醒：</b>' + s.tip + '</div>';
+    if (s.tip) html += '<div class="tip"><span class="tip-k">考前提醒</span>' + s.tip + '</div>';
     html += '<div class="tabs" role="tablist" style="--c:var(--s-' + s.id + ')">' +
       tabsOf(s).map(function (t) {
         return '<button type="button" role="tab" data-act="tab" data-v="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>';
@@ -291,23 +299,42 @@
     return s._words;
   }
 
+  /* 章节标题拆成“编号”和“标题”两行：『第六章 第一节 · 人体对外界环境的感知』『第一单元 · ……（第1—3课）』 */
+  function splitTitle(t) {
+    var k = '', m, i = t.indexOf(' · ');
+    if (i > 0) { k = t.slice(0, i); t = t.slice(i + 3); }
+    else if ((m = /^(第\S+?[章节元])\s+(.+)$/.exec(t))) { k = m[1]; t = m[2]; }
+    if ((m = /^(.+)（(第[^（）]*课)）$/.exec(t))) { t = m[1]; k = (k ? k + ' · ' : '') + m[2]; }
+    return { k: k, t: t };
+  }
   function renderLearn(s, el) {
     var openCh = ui.ch[s.id + ':open'];
     el.innerHTML = s.chapters.map(function (c, i) {
       var seen = !!S.seen[s.id + '/' + c.id];
       var nq = s.questions.filter(function (q) { return q.ch === c.id; }).length;
       var open = openCh ? openCh === c.id : i === 0;
-      return '<details class="chapter" id="ch-' + c.id + '"' + (open ? ' open' : '') + '><summary><h3>' + esc(c.title) + '</h3>' +
-        (c.hot ? '<span class="tag">期中重点</span>' : '') + (seen ? '<span class="seen">✓ 已复习</span>' : '') + '</summary>' +
+      var tt = splitTitle(c.title);
+      var tags = (c.hot ? '<span class="tag">期中重点</span>' : '') + (seen ? '<span class="seen">✓ 已复习</span>' : '');
+      return '<details class="chapter" id="ch-' + c.id + '"' + (open ? ' open' : '') + '><summary><div class="ch-t">' +
+        (tt.k || tags ? '<div class="ch-kl">' + (tt.k ? '<span class="ch-k">' + esc(tt.k) + '</span>' : '') + tags + '</div>' : '') + '<h3>' + esc(tt.t) + '</h3></div></summary>' +
         '<div class="points">' + c.points.map(function (p) {
-          return '<div class="point"><h4>' + p.t + '</h4><div>' + p.d + '</div>' + (p.art ? '<pre class="diagram">' + esc(p.art) + '</pre>' : '') + fig(p.fig) + '</div>';
+          return '<div class="point"><h4>' + p.t + '</h4><div class="pd">' + p.d + '</div>' + (p.art ? GEO.monoPre(p.art) : '') + fig(p.fig) + '</div>';
         }).join('') + '</div>' +
         '<div class="ch-foot">' +
         '<button type="button" class="btn sm' + (seen ? '' : ' primary') + '" data-act="seen" data-v="' + c.id + '">' + (seen ? '取消「已复习」' : '标记为已复习') + '</button>' +
         (nq ? '<button type="button" class="btn sm" data-act="chquiz" data-v="' + c.id + '">练这一章 ' + nq + ' 题</button>' : '') +
         '</div></details>';
     }).join('');
+    el.querySelectorAll('.pd table').forEach(labelTable);
     if (openCh) { var t = document.getElementById('ch-' + openCh); if (t) setTimeout(function () { t.scrollIntoView({ block: 'start' }); }, 30); ui.ch[s.id + ':open'] = null; }
+  }
+  /* 表头各不相同的表格：给每格记下列名，窄屏时一行变成一张小卡片（列名：内容），不用左右滑动 */
+  function labelTable(t) {
+    var rows = t.rows; if (rows.length < 2) return;
+    var heads = Array.prototype.map.call(rows[0].cells, function (c) { return c.tagName === 'TH' ? c.textContent.trim() : ''; });
+    if (heads.some(function (h) { return !h; }) || heads.some(function (h, i) { return heads.indexOf(h) !== i; })) return;
+    t.classList.add('stackable');
+    for (var i = 1; i < rows.length; i++) Array.prototype.forEach.call(rows[i].cells, function (c, k) { c.setAttribute('data-label', heads[k] || ''); });
   }
 
   function renderPractice(s, el) {
@@ -347,8 +374,9 @@
     var known = s.cards.filter(function (c) { return S.cards[c.id]; }).length;
     var html = '<div class="chips">' +
       ['all'].concat(groups).map(function (g) {
-        var label = g === 'all' ? '全部' : (s.chMap[g] ? s.chMap[g].title.replace(/^.*?·\s*/, '') : g);
-        return '<button type="button" class="chip' + (ch === g ? ' on' : '') + '" data-act="cardch" data-v="' + g + '">' + esc(label) + '</button>';
+        var full = g === 'all' ? '' : (s.chMap[g] ? s.chMap[g].title : g), tt = splitTitle(full);
+        var label = g === 'all' ? '全部' : (/^第/.test(tt.k) ? tt.k.split(' · ')[0] : tt.t);
+        return '<button type="button" class="chip' + (ch === g ? ' on' : '') + '" data-act="cardch" data-v="' + g + '"' + (full ? ' title="' + esc(full) + '"' : '') + '>' + esc(label) + '</button>';
       }).join('') + '</div>' +
       '<div class="row"><label class="row small" style="gap:6px"><input type="checkbox" id="only-new" data-act="onlynew"' + (ui.cardOnlyNew[s.id] ? ' checked' : '') + '> 只看「还不熟」的</label>' +
       '<span class="muted small mono">已记住 ' + known + '/' + s.cards.length + '</span>' +

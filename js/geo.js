@@ -69,6 +69,24 @@ window.GEWU_GEO = (function () {
   'use strict';
   var G = window.GEWU_G;
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  /* 字符示意图：按“汉字和全角标点占 2 格、其余占 1 格”的网格排版（和书写时的对齐方式一致），
+     每个非 ASCII 字符放进固定宽度（2ch / 1ch）的格子里，不受字体回退影响；--cols 用来在窄屏上缩小字号 */
+  var WIDE = /[\u1100-\u115F\u2E80-\u303E\u3041-\u33FF\u3400-\u4DBF\u4E00-\u9FFF\uA000-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6\u201C\u201D\u2018\u2019]/;
+  function monoPre(str, cls) {
+    var cols = 0;
+    var body = String(str).replace(/^\n/, '').split('\n').map(function (line) {
+      var w = 0, out = '';
+      Array.from(line).forEach(function (ch) {
+        if (ch.charCodeAt(0) < 128) { out += esc(ch); w += 1; }
+        else if (WIDE.test(ch)) { out += '<i class="w2">' + ch + '</i>'; w += 2; }
+        else { out += '<i class="w1">' + esc(ch) + '</i>'; w += 1; }
+      });
+      cols = Math.max(cols, w);
+      return out;
+    }).join('\n');
+    return '<pre class="' + (cls || 'diagram') + '" style="--cols:' + cols + '">' + body + '</pre>';
+  }
   function f1(x) { return (Math.round(x * 10) / 10).toFixed(1); }
 
   /* ---------- 静态图形 ----------
@@ -414,7 +432,7 @@ window.GEWU_GEO = (function () {
       '<div class="qmeta"><span class="chip">' + esc(ex.type) + '</span>' + (ex.level ? '<span class="tag' + (ex.level === '基础' ? ' calm' : ex.level === '真题' ? ' src' : '') + '">' + esc(ex.level) + '</span>' : '') + (done ? '<span class="seen">✓ 已掌握</span>' : '') + '</div>' +
       '<h3><span class="idx mono">例 ' + (i + 1) + '</span>' + esc(ex.title) + '</h3>' +
       (figs ? '<div class="ex-figs">' + figs + '</div>' : '') + (ex.dyn ? dynBlock(ex, cong) : '') +
-      '<div class="stem">' + ex.q + '</div>' + (ex.art ? '<pre class="diagram">' + esc(ex.art) + '</pre>' : '') +
+      '<div class="stem">' + ex.q + '</div>' + (ex.art ? monoPre(ex.art) : '') +
       (ex.asks ? '<ol class="asks">' + ex.asks.map(function (a) { return '<li>' + a + '</li>'; }).join('') + '</ol>' : '') +
       '<div class="row">' +
       (hasCong ? '<button type="button" class="btn sm" data-x="cong" data-v="' + ex.id + '">' + (cong ? '隐藏全等三角形' : '标出全等三角形') + '</button>' : '') +
@@ -476,5 +494,5 @@ window.GEWU_GEO = (function () {
     };
   }
 
-  return { figure: figure, renderLab: renderLab, renderExamples: renderExamples, stop: function () { lab.play = false; } };
+  return { figure: figure, monoPre: monoPre, renderLab: renderLab, renderExamples: renderExamples, stop: function () { lab.play = false; } };
 })();

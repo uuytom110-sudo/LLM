@@ -252,15 +252,15 @@
   ].join('\n');
   var PTS_FS_G = 'precision mediump float; varying vec3 vC; void main(){ vec2 d = gl_PointCoord - 0.5; gl_FragColor = vec4(vC * exp(-dot(d, d) * 12.0), 1.0); }';
 
-  var GLYPH_FS = [
-    'precision mediump float;',
-    'uniform sampler2D uSa; uniform sampler2D uSb; uniform sampler2D uAtlas;',
-    'uniform vec2 uGrid; uniform vec2 uCell; uniform vec2 uRes; uniform float uN; uniform float uMix; uniform float uT; uniform float uBar;',
-    'float h1(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }',
+  /* 第二遍拆成三步：前两步在字符网格分辨率上算好每一格的颜色、字符序号和辉光（很便宜），
+     最后一步在全分辨率上只做三次取样（格子、字符图集、辉光）再加暗角和颗粒，手机上也能稳住帧率 */
+  var HP = ['#ifdef GL_FRAGMENT_PRECISION_HIGH', 'precision highp float;', '#else', 'precision mediump float;', '#endif'];
+  var HASH = 'float h1(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }';
+  var COMP_FS = HP.concat([
+    'uniform sampler2D uSa; uniform sampler2D uSb; uniform vec2 uGrid; uniform float uN; uniform float uMix; uniform float uT;',
+    HASH,
     'void main(){',
-    '  vec2 fc = gl_FragCoord.xy;',
-    '  if (fc.y < uBar || fc.y > uRes.y - uBar){ gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }',
-    '  vec2 cell = floor(fc / uCell); vec2 lc = fract(fc / uCell); vec2 uv = (cell + 0.5) / uGrid;',
+    '  vec2 cell = floor(gl_FragCoord.xy); vec2 uv = (cell + 0.5) / uGrid;',
     '  vec3 ca = texture2D(uSa, uv).rgb; vec3 cb = texture2D(uSb, uv).rgb;',
     '  float h = h1(cell * 0.731 + 3.1);',
     '  vec3 c = uMix >= 1.0 ? cb : (h < uMix ? cb : ca);',
@@ -268,16 +268,34 @@
     '  float L = max(max(c.r, c.g), c.b);',
     '  float boil = (h1(cell + floor(uT * 12.0)) - 0.5) * 0.03;',
     '  float Lr = pow(clamp((L - 0.04 + boil) / 0.94, 0.0, 1.0), 0.85);',
-    '  float m = texture2D(uAtlas, vec2((floor(Lr * (uN - 1.0) + 0.5) + lc.x) / uN, 1.0 - lc.y)).r;',
-    '  vec3 col = (c / max(L, 0.001)) * m * (0.24 + 1.0 * Lr);',
-    '  vec2 o = 1.6 / uGrid; vec2 u2 = fc / (uGrid * uCell);',
+    '  vec3 col = (c / max(L, 0.001)) * (0.24 + 1.0 * Lr);',
+    '  gl_FragColor = vec4(col / 1.25, floor(Lr * (uN - 1.0) + 0.5) / 255.0);',
+    '}'
+  ]).join('\n');
+  var BLOOM_FS = HP.concat([
+    'uniform sampler2D uSb; uniform vec2 uGrid;',
+    'void main(){',
+    '  vec2 u2 = gl_FragCoord.xy / uGrid; vec2 o = 1.6 / uGrid;',
     '  vec3 bl = texture2D(uSb, u2 + vec2(o.x, 0.0)).rgb + texture2D(uSb, u2 - vec2(o.x, 0.0)).rgb + texture2D(uSb, u2 + vec2(0.0, o.y)).rgb + texture2D(uSb, u2 - vec2(0.0, o.y)).rgb;',
-    '  col += bl * 0.035 * min(uMix, 1.0);',
+    '  gl_FragColor = vec4(bl * 0.25, 1.0);',
+    '}'
+  ]).join('\n');
+  var GLYPH_FS = HP.concat([
+    'uniform sampler2D uC; uniform sampler2D uL; uniform sampler2D uAtlas;',
+    'uniform vec2 uGrid; uniform vec2 uCell; uniform vec2 uRes; uniform float uN; uniform float uMix; uniform float uT; uniform float uBar;',
+    HASH,
+    'void main(){',
+    '  vec2 fc = gl_FragCoord.xy;',
+    '  if (fc.y < uBar || fc.y > uRes.y - uBar){ gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }',
+    '  vec2 g = fc / uCell; vec2 cell = floor(g); vec2 lc = g - cell;',
+    '  vec4 k = texture2D(uC, (cell + 0.5) / uGrid);',
+    '  float m = texture2D(uAtlas, vec2((floor(k.a * 255.0 + 0.5) + lc.x) / uN, 1.0 - lc.y)).r;',
+    '  vec3 col = k.rgb * 1.25 * m + texture2D(uL, g / uGrid).rgb * (0.14 * min(uMix, 1.0));',
     '  vec2 v = fc / uRes - 0.5; col *= 1.0 - 0.45 * pow(length(v * vec2(1.0, 0.85)) * 1.35, 2.4);',
     '  col += (h1(fc + fract(uT * 7.3) * 100.0) - 0.5) * 0.02;',
     '  gl_FragColor = vec4(col + vec3(0.008, 0.009, 0.011), 1.0);',
     '}'
-  ].join('\n');
+  ]).join('\n');
 
   /* ---------- 终章：所有粒子螺旋聚成字符画 “access”，再轮换成多国语言 ---------- */
   var WORDS = window.GEWU_INTRO_WORDS || [['access', 'EN'], ['进入', '中文']];
@@ -411,28 +429,28 @@
     el.innerHTML = '<canvas aria-hidden="true"></canvas>' +
       '<button type="button" class="intro-go intro-word" tabindex="-1" aria-label="进入网站（access）"><span>access</span></button>';
     var cv = el.querySelector('canvas');
-    var gl, P, PG, PL, PGx, PD, PW, PM, vD, quad, vL, vG, vF, vWF, vWT, vWS, vWC, minmax, texA, texB, fbA, fbB, atlasTex, texM0, texM1, N = 1, dustArr;
+    var gl, P, PG, PC, PB, PL, PGx, PD, PW, PM, vD, quad, vL, vG, vF, vWF, vWT, vWS, vWC, minmax, texA, texB, texC, texL, fbA, fbB, fbC, fbL, atlasTex, texM0, texM1, N = 1, dustArr;
     try {
       gl = cv.getContext('webgl', { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: 'high-performance' });
       if (!gl) throw new Error('no webgl');
-      P = program(gl, VS, SCENE_FS, 'aP'); PG = program(gl, VS, GLYPH_FS, 'aP');
+      P = program(gl, VS, SCENE_FS, 'aP'); PG = program(gl, VS, GLYPH_FS, 'aP'); PC = program(gl, VS, COMP_FS, 'aP'); PB = program(gl, VS, BLOOM_FS, 'aP');
       PL = program(gl, LORENZ_VS, PTS_FS_L, 'aV'); PGx = program(gl, GALAXY_VS, PTS_FS_G, 'aG'); PD = program(gl, DUST_VS, PTS_FS_G, 'aD');
       PW = program(gl, WORD_VS, PTS_FS_G, ['aF', 'aT', 'aS', 'aC']); PM = program(gl, MASK_VS, MASK_FS, 'aP');
       quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
-      vL = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vL); gl.bufferData(gl.ARRAY_BUFFER, lorenzData(), gl.STATIC_DRAW);
-      vG = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vG); gl.bufferData(gl.ARRAY_BUFFER, galaxyData(), gl.STATIC_DRAW);
+      vL = gl.createBuffer(); vG = gl.createBuffer();
       dustArr = dustData(); vD = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vD); gl.bufferData(gl.ARRAY_BUFFER, dustArr, gl.STATIC_DRAW);
       vF = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vF); var ph = new Float32Array(2200 * 4); for (var pi = 0; pi < 2200; pi++) ph[pi * 4] = pi / 2200; gl.bufferData(gl.ARRAY_BUFFER, ph, gl.STATIC_DRAW);
       vWF = gl.createBuffer(); vWT = gl.createBuffer(); vWS = gl.createBuffer(); vWC = gl.createBuffer(); minmax = gl.getExtension('EXT_blend_minmax');
-      texA = tex(gl, gl.LINEAR); texB = tex(gl, gl.LINEAR); atlasTex = tex(gl, gl.NEAREST); texM0 = tex(gl, gl.LINEAR); texM1 = tex(gl, gl.LINEAR);
-      fbA = gl.createFramebuffer(); fbB = gl.createFramebuffer();
+      texA = tex(gl, gl.LINEAR); texB = tex(gl, gl.LINEAR); texC = tex(gl, gl.NEAREST); texL = tex(gl, gl.LINEAR); atlasTex = tex(gl, gl.NEAREST); texM0 = tex(gl, gl.LINEAR); texM1 = tex(gl, gl.LINEAR);
+      fbA = gl.createFramebuffer(); fbB = gl.createFramebuffer(); fbC = gl.createFramebuffer(); fbL = gl.createFramebuffer();
     } catch (err) {
       if (window.console) console.warn('Gewu intro: WebGL unavailable, using 2D version.', err && err.message);
       if (fallback) fallback(force);
       return;
     }
     document.body.appendChild(el);
+    if (FX.hold) FX.hold(true);
     var btn = el.querySelector('.intro-go');
     var W, H, dpr, gw, gh, cols, rows, S, oy0, bar = 0, q = 0, closing = false;
     var wordRect = { x: 0, y: 0, w: 1, h: 1 };
@@ -442,7 +460,7 @@
       btn.style.left = wordRect.x + 'px'; btn.style.top = (cy - wh * 0.36) + 'px'; btn.style.width = ww + 'px'; btn.style.height = (wh * 0.72) + 'px';
     }
     function resize() {
-      dpr = Math.min(window.devicePixelRatio || 1, [2.5, 1.6, 1.1][q]);
+      dpr = Math.min(window.devicePixelRatio || 1, [2, 1.5, 1.1][q]);
       var box = el.getBoundingClientRect();
       W = Math.round(box.width) || window.innerWidth; H = Math.round(box.height) || window.innerHeight;
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
@@ -452,7 +470,7 @@
       bar = 0;
       S = H > W * 1.3 ? Math.min(W / 1.75, H / 1.9) : Math.min(W / 2.15, H / 1.9); oy0 = 0;
       el.style.setProperty('--bar', bar + 'px');
-      [[texA, fbA], [texB, fbB]].forEach(function (pr) {
+      [[texA, fbA], [texB, fbB], [texC, fbC], [texL, fbL]].forEach(function (pr) {
         gl.bindTexture(gl.TEXTURE_2D, pr[0]); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, cols, rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, pr[1]); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, pr[0], 0);
       });
@@ -460,7 +478,8 @@
       var at = atlas(gw, gh); N = at.n;
       gl.bindTexture(gl.TEXTURE_2D, atlasTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, at.canvas);
       layoutWord();
-      if (fin) { morph = null; curTo = targets(word(wIdx)); maskTex(texM0, wIdx); uploadWord(curTo, curTo); wP0 = -9; if (ready) nextMorph = 0; }
+      if (fin) { morph = null; pend = 0; curTo = targets(word(wIdx)); maskTex(texM0, wIdx); uploadWord(curTo, curTo); wP0 = -9; if (ready) nextMorph = 0; }
+      warm = 0; fN = 0; fAcc = 0;
     }
 
     var cur = (window.GEWU_INTRO_FROM | 0) % CH.length, prev = -1, sT = performance.now(), pT = 0, t0 = performance.now(), raf;
@@ -469,8 +488,22 @@
 
     /* 终章时间线（真实秒）：影片约 15 秒后粒子开始聚拢，约 2.5 秒后聚成 “access” 并可点击；之后每隔一段时间换一种语言 */
     var finAt = window.GEWU_INTRO_REVEAL_AT !== undefined ? window.GEWU_INTRO_REVEAL_AT : CH.length * DUR - 1.2;
-    var fin = false, ready = false, NW = 0, MAXP = 42000, raster = [], wIdx = 0, curTo = null, wP0 = 0, morph = null, nextMorph = 0, hov = 0, hovT = 0;
+    var fin = false, ready = false, NW = 0, MAXP = 42000, raster = [], wIdx = 0, curTo = null, wP0 = 0, morph = null, nextMorph = 0, hov = 0, hovT = 0, pend = 0;
+    var fN = 0, fAcc = 0, fLast = 0, warm = 0;
     function word(i) { if (!raster[i]) raster[i] = rasterWord(WORDS[i][0]); return raster[i]; }
+    /* 空闲时提前把各国语言的单词栅格化、提前算好下一次变换的目标点，避免终章和每次换语言时卡一下 */
+    function idle(fn) { if (window.requestIdleCallback) window.requestIdleCallback(fn, { timeout: 400 }); else setTimeout(fn, 50); }
+    var prepI = 0, prepping = false;
+    function prepWords() {
+      if (closing || prepI >= WORDS.length) { prepping = false; return; }
+      word(prepI++); idle(prepWords);
+    }
+    function startPrep() { if (!prepping) { prepping = true; idle(prepWords); } }
+    function prepNext() {
+      if (closing || !ready || morph || pend !== 1) { if (pend === 1) pend = 0; return; }
+      var ni = (wIdx + 1) % WORDS.length;
+      pend = { i: ni, to: targets(word(ni)) }; maskTex(texM1, ni);
+    }
     function targets(r) {
       var ink = r.ink, n = ink.length / 2, out = new Float32Array(NW * 2), sx = wordRect.w / WCW, sy = wordRect.h / WCH;
       for (var i = 0; i < NW; i++) {
@@ -514,8 +547,10 @@
       btn.classList.add('show');
     }
     function startMorph(tr) {
-      var ni = (wIdx + 1) % WORDS.length, to = targets(word(ni));
-      uploadWord(curTo, to); maskTex(texM1, ni);
+      var ni = (wIdx + 1) % WORDS.length, to;
+      if (pend && pend.i === ni) to = pend.to; else { to = targets(word(ni)); maskTex(texM1, ni); }
+      pend = 0;
+      uploadWord(curTo, to);
       morph = { i: ni, t0: tr, to: to };
     }
     function endMorph(tr) {
@@ -523,7 +558,12 @@
       morph = null; nextMorph = tr + HOLD; wP0 = -9;
     }
 
+    /* 洛伦兹、星系两章的粒子数据较大，开场后空闲时再生成（用到时还没生成就当场生成） */
+    var hasL = false, hasG = false;
+    function ensureL() { if (!hasL && !closing) { hasL = true; gl.bindBuffer(gl.ARRAY_BUFFER, vL); gl.bufferData(gl.ARRAY_BUFFER, lorenzData(), gl.STATIC_DRAW); } }
+    function ensureG() { if (!hasG && !closing) { hasG = true; gl.bindBuffer(gl.ARRAY_BUFFER, vG); gl.bufferData(gl.ARRAY_BUFFER, galaxyData(), gl.STATIC_DRAW); } }
     function drawPoints(c, t, tau) {
+      if (c.pts === 'lorenz') ensureL(); else if (c.pts !== 'phyllo') ensureG();
       var ph = c.pts === 'phyllo';
       var pr = c.pts === 'lorenz' ? PL : PGx, buf = c.pts === 'lorenz' ? vL : (ph ? vF : vG), count = c.pts === 'lorenz' ? 36000 : (ph ? 2200 : 80000);
       var R = c.pts === 'lorenz' ? rotM(t * 0.12 + mx * 1.5, 0.25 + my * 0.8) : (ph ? rotM(mx * 0.8, 1.35 + 0.1 * Math.sin(t * 0.15) + my * 0.5) : rotM(t * 0.05 + mx * 1.2, 0.55 + 0.1 * Math.sin(t * 0.1) + my * 0.6));
@@ -606,14 +646,16 @@
     }
 
     resize();
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (!closing) { raster = []; resize(); } });
+    setTimeout(function () { idle(ensureL); idle(ensureG); }, 700);
+    setTimeout(startPrep, 1200);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (!closing) { raster = []; prepI = 0; pend = 0; resize(); startPrep(); } });
 
-    var fN = 0, fAcc = 0, fLast = 0;
     function frame(now) {
       raf = requestAnimationFrame(frame);
-      if (fLast) { fAcc += now - fLast; fN++; }
+      /* 自适应画质：跳过开头的热身帧，之后每 45 帧看一次；平均每帧超过 24 毫秒就降一档（终章开始后不再调整，免得画面跳动） */
+      if (fLast && ++warm > 20) { fAcc += Math.min(100, now - fLast); fN++; }
       fLast = now;
-      if (fN >= 90) { if (fAcc / fN > 38 && q < 2) { q++; resize(); } fN = 0; fAcc = 0; }
+      if (fN >= 45) { if (!fin && fAcc / fN > 24 && q < 2) { q++; resize(); } fN = 0; fAcc = 0; }
       var tr = (now - t0) / 1000, t = tr * SPEED, tauR = (now - sT) / 1000;
       /* 临近终章时不再换章，让最后一章完整亮起来再聚拢 */
       if (!closing && !fin && tauR > DUR && tr < finAt - 0.6) { go(cur + 1); tauR = 0; }
@@ -628,6 +670,7 @@
         ready = true; btn.classList.add('ready'); btn.removeAttribute('tabindex'); btn.focus({ preventScroll: true }); el.classList.add('ready');
         nextMorph = tr + HOLD;
       }
+      if (ready && !morph && !pend && !closing && tr >= nextMorph - HOLD * 0.7) { pend = 1; idle(prepNext); }
       if (ready && !morph && tr >= nextMorph && !closing) startMorph(tr);
       var mp = morph ? Math.min(1, (tr - morph.t0) / MORPH) : 0;
       boost = 1 + 1.8 * (prev >= 0 ? Math.sin(Math.PI * Math.min(1, mix)) : 0);
@@ -651,19 +694,33 @@
           drawWord(tr, gp, 1, 0, 1, 0);
         }
       }
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height);
-      gl.useProgram(PG.p); var u = PG.u;
+      var mixU = prev >= 0 ? mix : 1, u;
+      gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+      /* 网格分辨率：每格的颜色和字符序号 → texC；辉光 → texL */
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbC); gl.viewport(0, 0, cols, rows);
+      gl.useProgram(PC.p); u = PC.u;
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texA); gl.uniform1i(u.uSa, 0);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texB); gl.uniform1i(u.uSb, 1);
+      gl.uniform2f(u.uGrid, cols, rows); gl.uniform1f(u.uN, N); gl.uniform1f(u.uMix, mixU); gl.uniform1f(u.uT, t);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbL);
+      gl.useProgram(PB.p); u = PB.u;
+      gl.uniform1i(u.uSb, 1); gl.uniform2f(u.uGrid, cols, rows);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      /* 全分辨率：画字符 */
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height);
+      gl.useProgram(PG.p); u = PG.u;
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texC); gl.uniform1i(u.uC, 0);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, texL); gl.uniform1i(u.uL, 1);
       gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, atlasTex); gl.uniform1i(u.uAtlas, 2);
       gl.uniform2f(u.uGrid, cols, rows); gl.uniform2f(u.uCell, gw, gh); gl.uniform2f(u.uRes, cv.width, cv.height);
-      gl.uniform1f(u.uN, N); gl.uniform1f(u.uMix, prev >= 0 ? mix : 1); gl.uniform1f(u.uT, t); gl.uniform1f(u.uBar, bar * dpr);
-      gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+      gl.uniform1f(u.uN, N); gl.uniform1f(u.uMix, mixU); gl.uniform1f(u.uT, t); gl.uniform1f(u.uBar, bar * dpr);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       gl.activeTexture(gl.TEXTURE0);
     }
     function close() {
       if (closing) return; closing = true;
+      if (FX.hold) FX.hold(false);
       el.classList.add('out');
       setTimeout(function () { cancelAnimationFrame(raf); el.remove(); window.removeEventListener('resize', resize); document.removeEventListener('keydown', onKey); var lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext(); }, 1100);
     }

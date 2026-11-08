@@ -220,6 +220,7 @@
     el.innerHTML = '<canvas aria-hidden="true"></canvas><div class="intro-vig" aria-hidden="true"></div>' +
       '<button type="button" class="intro-go intro-word" tabindex="-1" aria-label="进入网站（access）"><span>access</span></button>';
     document.body.appendChild(el);
+    if (FX.hold) FX.hold(true);
     var cv = el.querySelector('canvas'), ctx = cv.getContext('2d'), btn = el.querySelector('.intro-go');
     var W, H, cols, rows, V, bufA, bufB, rnd, font, chh, cw, wr = { x: 0, y: 0, w: 1, h: 1 };
     function resize() {
@@ -373,6 +374,7 @@
     }
     function close() {
       if (closing) return; closing = true;
+      if (FX.hold) FX.hold(false);
       el.classList.add('out');
       setTimeout(function () { cancelAnimationFrame(raf); el.remove(); window.removeEventListener('resize', resize); document.removeEventListener('keydown', onKey); }, 1100);
     }

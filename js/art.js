@@ -3,6 +3,25 @@ window.GEWU_ART = (function () {
   var R = String.raw;
 
   var svg = {
+    chinese: '<svg class="art-svg" viewBox="0 0 160 100" aria-hidden="true">' +
+      '<rect class="fill" x="24" y="14" width="112" height="72" rx="2"/>' +
+      '<path d="M20 9v82M140 9v82" stroke-width="6"/>' +
+      '<path d="M34 72 L56 40 L68 56 L86 30 L112 72"/>' +
+      '<path d="M78 40 l8 -10 l6 8" class="thin"/>' +
+      '<circle cx="114" cy="32" r="7" class="fill"/>' +
+      '<path d="M34 78 q8 -4 16 0 t16 0 t16 0 t16 0 t16 0" class="thin"/>' +
+      '<path d="M46 26 h18 M46 32 h12" class="thin"/>' +
+      '</svg>',
+    history: '<svg class="art-svg" viewBox="0 0 160 100" aria-hidden="true">' +
+      '<path d="M14 40 Q40 34 80 22 Q120 34 146 40" stroke-width="2.6"/>' +
+      '<path d="M14 40 q-4 -2 -6 -7 M146 40 q4 -2 6 -7" class="thin"/>' +
+      '<rect class="fill" x="34" y="40" width="92" height="16"/>' +
+      '<path d="M44 40v16M60 40v16M76 40v16M84 40v16M100 40v16M116 40v16" class="thin"/>' +
+      '<path d="M22 60 Q50 54 80 50 Q110 54 138 60"/>' +
+      '<rect class="fill" x="24" y="60" width="112" height="28"/>' +
+      '<path d="M70 88 v-14 a10 10 0 0 1 20 0 v14 M40 88 v-10 a6 6 0 0 1 12 0 v10 M108 88 v-10 a6 6 0 0 1 12 0 v10"/>' +
+      '<path d="M8 92 H152" class="thin"/>' +
+      '</svg>',
     biology: '<svg class="art-svg" viewBox="0 0 160 100" aria-hidden="true">' +
       '<circle cx="40" cy="50" r="13" class="fill"/>' +
       '<circle cx="40" cy="50" r="4" class="solid"/>' +
@@ -49,6 +68,19 @@ window.GEWU_ART = (function () {
   };
 
   var ascii = {
+    chinese: R`
+       |          .   *    .
+      |||        /\
+      |||   /\  /  \   /\
+      \_/  /  \/    \_/  \
+       V  / ~~~ ~~~~ ~~~  \
+    ======================== `,
+    history: R`
+       _   _   _            _   _   _
+   ___| |_| |_| |___    ___| |_| |_| |___
+  |   _   _   _     |__|     _   _   _   |
+  |__| |_| |_| |___________| |_| |_| |___|
+  1840 ---- 1894 ---- 1911 ---- 1919 ---- 1949`,
     home: R`
         __...--~~~~~-._   _.-~~~~~--...__
       //               \ /               \\

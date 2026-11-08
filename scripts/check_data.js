@@ -3,7 +3,7 @@
 global.window = {};
 const path = require('path');
 const root = path.resolve(__dirname, '..');
-['js/geo.js', 'data/biology.js', 'data/physics.js', 'data/geography.js', 'data/model.js', 'data/model-exam.js', 'data/motion.js'].forEach(f => require(path.join(root, f)));
+['js/geo.js', 'data/chinese.js', 'data/history.js', 'data/geography.js', 'data/biology.js', 'data/physics.js', 'data/model.js', 'data/model-exam.js', 'data/motion.js'].forEach(f => require(path.join(root, f)));
 const GEO = window.GEWU_GEO;
 let bad = 0;
 function fail(msg) { bad++; console.error('✗ ' + msg); }
